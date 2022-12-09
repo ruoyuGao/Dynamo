@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.22.2">
+    <meta name="project" content="CS2621 Emulator v0.1.0">
+    <title>ComBase — CS2621 Emulator v0.1.0</title>
+    <link rel="stylesheet" href="dist/elixir-d678dad126d82ddc061f.css" />
+    <script src="dist/sidebar_items-619036ac3b.js"></script>
+      <script src="docs_config.js"></script>
+    <script async src="dist/app-0103364119015b97e56c.js"></script>
+  </head>
+  <body data-type="modules">
+    <script>try { if(localStorage.getItem('night-mode') === 'true') document.body.className += ' night-mode'; } catch (e) { }</script>
+<div class="main">
+
+<button class="sidebar-button sidebar-toggle">
+  <span class="icon-menu" title="Collapse/expand sidebar"></span>
+</button>
+
+<section class="sidebar">
+  <form class="sidebar-search" action="search.html">
+    <button type="submit" class="search-button">
+      <span class="icon-search" aria-hidden="true"></span>
+    </button>
+    <button type="button" tabindex="-1" class="search-close-button">
+      <span class="icon-cross" title="Cancel search"></span>
+    </button>
+    <label class="search-label">
+      <input name="q" type="text" id="search-list" class="search-input" placeholder="Search..." aria-label="Search" autocomplete="off" />
+    </label>
+  </form>
+
+  <div class="autocomplete">
+    <div class="autocomplete-results">
+    </div>
+  </div>
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectDetails">
+      <a href="https://cs.nyu.edu/~apanda/classes/fa20/emdocs/" class="sidebar-projectName">
+CS2621 Emulator      </a>
+      <h2 class="sidebar-projectVersion">
+        v0.1.0
+      </h2>
+    </div>
+  </div>
+
+  <ul class="sidebar-listNav">
+    <li><a id="extras-list" href="#full-list">Pages</a></li>
+
+      <li><a id="modules-list" href="#full-list">Modules</a></li>
+
+  </ul>
+  <div class="gradient"></div>
+  <ul id="full-list" class="sidebar-fullList"></ul>
+</section>
+
+<section class="content">
+  <div class="content-outer">
+    <div id="content" class="content-inner">
+
+      <h1>
+        <small class="app-vsn">CS2621 Emulator v0.1.0</small>
+ComBase          <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L5" title="View Source" class="view-source" rel="help">
+            <span class="icon-code" aria-hidden="true"></span>
+            <span class="sr-only">View Source</span>
+          </a>
+      </h1>
+
+
+        <section id="moduledoc">
+<p>ComBase emulates a distribtued application connected
+over a potentially asynchronous network.</p>        </section>
+
+        <section id="summary" class="details-list">
+          <h1 class="section-heading">
+            <a class="hover-link" href="#summary">
+              <span class="icon-link" aria-hidden="true"></span>
+              <span class="sr-only">Link to this section</span>
+            </a>
+            Summary
+          </h1>
+  <div class="summary-functions summary">
+    <h2>
+      <a href="#functions">Functions</a>
+    </h2>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#append_fuzzers/2">append_fuzzers(ctx, fuzzer_list)</a>
+  </div>
+    <div class="summary-synopsis"><p>Add to the list of fuzzers used when messages are received. Note
+this function must be called before any messages are sent.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#broadcast/2">broadcast(ctx, msg)</a>
+  </div>
+    <div class="summary-synopsis"><p>Send message to all active processes.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#get_fuzzers/1">get_fuzzers(ctx)</a>
+  </div>
+    <div class="summary-synopsis"><p>Get the current fuzzer list</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#init/0">init()</a>
+  </div>
+    <div class="summary-synopsis"><p>Initialize the communication base.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#list_proc/1">list_proc(ctx)</a>
+  </div>
+    <div class="summary-synopsis"><p>Get a list of all registed processes</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#mark_unfuzzable/1">mark_unfuzzable(ctx)</a>
+  </div>
+    <div class="summary-synopsis"><p>Mark this process as one whose messages (i.e.,
+those sent or received by the process) should not
+be fuzzed. This is meant as an aid to testing, and
+should not be used by code not within a test.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#now/1">now(ctx)</a>
+  </div>
+    <div class="summary-synopsis"><p>Get current time.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#send/3">send(ctx, proc, msg)</a>
+  </div>
+    <div class="summary-synopsis"><p>Send a message to the process named proc. Message can be
+anything. ctx should be the context in which the process
+was created.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#set_time/2">set_time(ctx, time)</a>
+  </div>
+    <div class="summary-synopsis"><p>Set current time.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#spawn/3">spawn(ctx, name, f)</a>
+  </div>
+    <div class="summary-synopsis"><p>Spawn a process with supplied name and function.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#terminate/1">terminate(ctx)</a>
+  </div>
+    <div class="summary-synopsis"><p>Terminate communication base.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#timer/2">timer(ctx, ms)</a>
+  </div>
+    <div class="summary-synopsis"><p>Set a timer for the given number of milliseconds, and send a message
+with the atom :timer when done.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#timer/3">timer(ctx, ms, atom)</a>
+  </div>
+    <div class="summary-synopsis"><p>Set a timer for the given number of milliseconds, and send a message
+with the atom <code class="inline">message</code> when done.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#translate_time/3">translate_time(ctx, p, time)</a>
+  </div>
+    <div class="summary-synopsis"><p>Translate <code class="inline">time</code> (gotten from <code class="inline">System.monotonic_time()</code>) to time
+at process <code class="inline">p</code>. This should only be used for testing.</p></div>
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#whoami/1">whoami(ctx)</a>
+  </div>
+    <div class="summary-synopsis"><p>Get ID for the current process.</p></div>
+</div>
+  </div>
+        </section>
+
+        <section id="functions" class="details-list">
+          <h1 class="section-heading">
+            <a class="hover-link" href="#functions">
+              <span class="icon-link" aria-hidden="true"></span>
+              <span class="sr-only">Link to this section</span>
+            </a>
+Functions          </h1>
+          <div class="functions-list">
+<section class="detail" id="append_fuzzers/2">
+  <div class="detail-header">
+    <a href="#append_fuzzers/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">append_fuzzers(ctx, fuzzer_list)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L192" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>append_fuzzers(
+  %ComBase{
+    fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    times: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+  },
+  [{<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">float</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>()}]
+) :: :ok</pre>
+      </div>
+
+<p>Add to the list of fuzzers used when messages are received. Note
+this function must be called before any messages are sent.</p>  </section>
+</section>
+<section class="detail" id="broadcast/2">
+  <div class="detail-header">
+    <a href="#broadcast/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">broadcast(ctx, msg)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L270" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>broadcast(
+  %ComBase{
+    fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    times: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+  },
+  <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">any</a>()
+) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">boolean</a>()</pre>
+      </div>
+
+<p>Send message to all active processes.</p>  </section>
+</section>
+<section class="detail" id="get_fuzzers/1">
+  <div class="detail-header">
+    <a href="#get_fuzzers/1" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">get_fuzzers(ctx)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L200" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>get_fuzzers(%ComBase{
+  fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  times: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+}) :: [{<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">float</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>()}]</pre>
+      </div>
+
+<p>Get the current fuzzer list</p>  </section>
+</section>
+<section class="detail" id="init/0">
+  <div class="detail-header">
+    <a href="#init/0" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">init()</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L32" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>init() :: %ComBase{
+  fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  times: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>()
+}</pre>
+      </div>
+
+<p>Initialize the communication base.</p>  </section>
+</section>
+<section class="detail" id="list_proc/1">
+  <div class="detail-header">
+    <a href="#list_proc/1" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">list_proc(ctx)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L261" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>list_proc(%ComBase{
+  fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  times: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+}) :: [<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>()]</pre>
+      </div>
+
+<p>Get a list of all registed processes</p>  </section>
+</section>
+<section class="detail" id="mark_unfuzzable/1">
+  <div class="detail-header">
+    <a href="#mark_unfuzzable/1" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">mark_unfuzzable(ctx)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L252" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>mark_unfuzzable(%ComBase{
+  fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  times: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>()
+}) :: :ok</pre>
+      </div>
+
+<p>Mark this process as one whose messages (i.e.,
+those sent or received by the process) should not
+be fuzzed. This is meant as an aid to testing, and
+should not be used by code not within a test.</p>  </section>
+</section>
+<section class="detail" id="now/1">
+  <div class="detail-header">
+    <a href="#now/1" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">now(ctx)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L404" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>now(%ComBase{
+  fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  times: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+}) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">number</a>()</pre>
+      </div>
+
+<p>Get current time.</p>  </section>
+</section>
+<section class="detail" id="send/3">
+  <div class="detail-header">
+    <a href="#send/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">send(ctx, proc, msg)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L215" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>send(
+  %ComBase{
+    fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    times: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+  },
+  <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">any</a>()
+) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">boolean</a>()</pre>
+      </div>
+
+<p>Send a message to the process named proc. Message can be
+anything. ctx should be the context in which the process
+was created.</p>  </section>
+</section>
+<section class="detail" id="set_time/2">
+  <div class="detail-header">
+    <a href="#set_time/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">set_time(ctx, time)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L419" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>set_time(
+  %ComBase{
+    fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    times: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+  },
+  <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">number</a>()
+) :: :ok</pre>
+      </div>
+
+<p>Set current time.</p>  </section>
+</section>
+<section class="detail" id="spawn/3">
+  <div class="detail-header">
+    <a href="#spawn/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">spawn(ctx, name, f)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L306" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>spawn(
+  %ComBase{
+    fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    times: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+  },
+  <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>(),
+  (() -&gt; <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">any</a>())
+) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>()</pre>
+      </div>
+
+<p>Spawn a process with supplied name and function.</p>  </section>
+</section>
+<section class="detail" id="terminate/1">
+  <div class="detail-header">
+    <a href="#terminate/1" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">terminate(ctx)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L81" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>terminate(%ComBase{
+  fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  times: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+}) :: :ok</pre>
+      </div>
+
+<p>Terminate communication base.</p>  </section>
+</section>
+<section class="detail" id="timer/2">
+  <div class="detail-header">
+    <a href="#timer/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">timer(ctx, ms)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L353" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>timer(
+  %ComBase{
+    fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    times: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+  },
+  <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">non_neg_integer</a>()
+) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">reference</a>()</pre>
+      </div>
+
+<p>Set a timer for the given number of milliseconds, and send a message
+with the atom :timer when done.</p>  </section>
+</section>
+<section class="detail" id="timer/3">
+  <div class="detail-header">
+    <a href="#timer/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">timer(ctx, ms, atom)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L369" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>timer(
+  %ComBase{
+    fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    times: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+  },
+  <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">non_neg_integer</a>(),
+  <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>()
+) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">reference</a>()</pre>
+      </div>
+
+<p>Set a timer for the given number of milliseconds, and send a message
+with the atom <code class="inline">message</code> when done.</p>  </section>
+</section>
+<section class="detail" id="translate_time/3">
+  <div class="detail-header">
+    <a href="#translate_time/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">translate_time(ctx, p, time)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L396" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>translate_time(
+  %ComBase{
+    fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+    times: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+    unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+  },
+  <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>(),
+  <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">number</a>()
+) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">number</a>()</pre>
+      </div>
+
+<p>Translate <code class="inline">time</code> (gotten from <code class="inline">System.monotonic_time()</code>) to time
+at process <code class="inline">p</code>. This should only be used for testing.</p>  </section>
+</section>
+<section class="detail" id="whoami/1">
+  <div class="detail-header">
+    <a href="#whoami/1" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature">whoami(ctx)</h1>
+      <a href="https://github.com/nyu-distributed-systems/fa20-lab1-code/tree/master/apps/emulation/blob/master/lib/combase.ex#L173" class="view-source" rel="help" title="View Source">
+       <span class="icon-code" aria-hidden="true"></span>
+       <span class="sr-only">View Source</span>
+     </a>
+  </div>
+
+  <section class="docstring">
+      <h2>Specs</h2>
+      <div class="specs">
+          <pre>whoami(%ComBase{
+  fuzz_chain: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  registration: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  rev_registration: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>(),
+  times: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
+  unfuzzables: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
+}) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pid</a>()</pre>
+      </div>
+
+<p>Get ID for the current process.</p>  </section>
+</section>
+          </div>
+        </section>
+      <footer class="footer">
+        <p>
+          <span class="line">
+            Built using
+            <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener">ExDoc</a> (v0.22.2),
+          </span>
+          <span class="line">
+            designed by
+            <a href="https://twitter.com/dignifiedquire" target="_blank" rel="noopener" title="@dignifiedquire">Friedel Ziegelmayer</a>.
+          </span>
+        </p>
+        <p>
+          <button class="line footer-button display-shortcuts-help">
+            Display keyboard shortcuts
+          </button>
+          <button class="line footer-button night-mode-toggle">
+            Toggle night mode
+          </button>
+          <button class="line footer-button display-quick-switch">
+            Go to a HexDocs package
+          </button>
+          <button class="line footer-button tooltips-toggle">
+            <span class="tooltips-option-disable">Disable tooltips</span>
+            <span class="tooltips-option-enable">Enable tooltips</span>
+          </button>
+        </p>
+      </footer>
+    </div>
+  </div>
+</section>
+</div>
+  </body>
+</html>
