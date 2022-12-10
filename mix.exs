@@ -22,7 +22,9 @@ defmodule Project1.MixProject do
     [
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.22", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.22", only: :dev, runtime: false},
+      {:merkle_tree, "~> 1.6.0"},
+      {:binary, "~> 0.0.5"}
     ]
   end
 end

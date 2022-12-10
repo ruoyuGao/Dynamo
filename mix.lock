@@ -1,4 +1,5 @@
 %{
+  "binary": {:hex, :binary, "0.0.5", "20d816f7274ea34f1b673b4cff2fdb9ebec9391a7a68c349070d515c66b1b2cf", [:mix], [], "hexpm", "ee1e9ebcab703a4e24db554957fbb540642fe9327eb9e295cb3f07dd7c11ddb2"},
   "bunt": {:hex, :bunt, "0.2.0", "951c6e801e8b1d2cbe58ebbd3e616a869061ddadcc4863d0a2182541acae9a38", [:mix], [], "hexpm", "7af5c7e09fe1d40f76c8e4f9dd2be7cebd83909f31fee7cd0e9eadc567da8353"},
   "credo": {:hex, :credo, "1.4.0", "92339d4cbadd1e88b5ee43d427b639b68a11071b6f73854e33638e30a0ea11f5", [:mix], [{:bunt, "~> 0.2.0", [hex: :bunt, repo: "hexpm", optional: false]}, {:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: false]}], "hexpm", "1fd3b70dce216574ce3c18bdf510b57e7c4c85c2ec9cad4bff854abaf7e58658"},
   "dialyxir": {:hex, :dialyxir, "1.0.0", "6a1fa629f7881a9f5aaf3a78f094b2a51a0357c843871b8bc98824e7342d00a5", [:mix], [{:erlex, ">= 0.2.6", [hex: :erlex, repo: "hexpm", optional: false]}], "hexpm", "aeb06588145fac14ca08d8061a142d52753dbc2cf7f0d00fc1013f53f8654654"},
@@ -8,6 +9,7 @@
   "jason": {:hex, :jason, "1.2.2", "ba43e3f2709fd1aa1dce90aaabfd039d000469c05c56f0b8e31978e03fa39052", [:mix], [{:decimal, "~> 1.0 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "18a228f5f0058ee183f29f9eae0805c6e59d61c3b006760668d8d18ff0d12179"},
   "makeup": {:hex, :makeup, "1.0.3", "e339e2f766d12e7260e6672dd4047405963c5ec99661abdc432e6ec67d29ef95", [:mix], [{:nimble_parsec, "~> 0.5", [hex: :nimble_parsec, repo: "hexpm", optional: false]}], "hexpm", "2e9b4996d11832947731f7608fed7ad2f9443011b3b479ae288011265cdd3dad"},
   "makeup_elixir": {:hex, :makeup_elixir, "0.14.1", "4f0e96847c63c17841d42c08107405a005a2680eb9c7ccadfd757bd31dabccfb", [:mix], [{:makeup, "~> 1.0", [hex: :makeup, repo: "hexpm", optional: false]}], "hexpm", "f2438b1a80eaec9ede832b5c41cd4f373b38fd7aa33e3b22d9db79e640cbde11"},
+  "merkle_tree": {:hex, :merkle_tree, "1.6.1", "a40b4bf928f2892254316c12e71f56b1b5613b2c7a6fe478cda06f84572dd71b", [:mix], [], "hexpm", "c68afd843150a4b23b11a709f428cb36950a4c0ab54c31a7e3322f58d3b3692f"},
   "nimble_parsec": {:hex, :nimble_parsec, "0.6.0", "32111b3bf39137144abd7ba1cce0914533b2d16ef35e8abc5ec8be6122944263", [:mix], [], "hexpm", "27eac315a94909d4dc68bc07a4a83e06c8379237c5ea528a9acff4ca1c873c52"},
   "statistics": {:hex, :statistics, "0.6.2", "213dcedc2b3ae7fb775b5510ea9630c66d3c0019ea2f86d5096559853623a60d", [:mix], [], "hexpm", "329f1008dc4ad24430d94c04b52ff09d5fb435ab11f34360831f11eb0c391c17"},
 }
