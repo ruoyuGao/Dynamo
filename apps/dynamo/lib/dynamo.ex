@@ -23,17 +23,17 @@ defmodule Dynamo do
   end
 
   defstruct(
-    hash_table:nil,
-    hash_tree:nil,
-    prefer_list:nil,
-    vector_clock:nil, #same as message_list
-    heartbeat_timer:nil,
-    heartbeat_timeout:nil
+    hash_table: nil,
+    hash_tree: nil,
+    prefer_list: nil,
+    vector_clock: nil, #same as message_list
+    heartbeat_timer: nil,
+    heartbeat_timeout: nil
   )
   @spec new_configuration(
     [atom()],
     non_neg_integer()
-  ):: Dynamo{}
+  ):: %Dynamo{}
   def new_configuration(
     prefer_list,
     heartbeat_timeout
@@ -41,17 +41,17 @@ defmodule Dynamo do
     %Dynamo{
       hash_table: Map.new(),
       hash_tree: MerkleTree.new(["placeholder"],&hash_function/1),
-      prefer_list:[],
-      vector_clock:[],
+      prefer_list: [],
+      vector_clock: [],
       heartbeat_timeout: heartbeat_timeout
     }
   end
-  @spec physical_node(%Raft{},any)::no_return()
+  @spec physical_node(%Dynamo{},any)::no_return()
   def physical_node(state,extra_state) do
     IO.puts("waiting for write")
   end
 
-  @spec virtual_node(%Raft(),any)::no_return()
+  @spec virtual_node(%Dynamo{},any)::no_return()
   def virtual_node(state,extra_state) do
     IO.puts("waiting for write")
   end
@@ -64,10 +64,10 @@ defmodule Dynamo.Client do
     except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
 
   alias __MODULE__
-  defstruct(node_list:nil)
+  defstruct(node_list: nil)
 
-  @spec new_client(%{}) :: %Client{node_list:%{}}
+  @spec new_client(%{}) :: %Client{node_list: %{}}
   def new_client(node_list) do
-    %Client{node_list:node_list}
+    %Client{node_list: node_list}
   end
 end

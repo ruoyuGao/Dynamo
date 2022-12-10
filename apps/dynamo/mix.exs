@@ -3,7 +3,7 @@ defmodule Raft.MixProject do
 
   def project do
     [
-      app: :lab3,
+      app: :dynamo,
       version: "0.1.0",
       build_path: "../../_build",
       config_path: "../../config/config.exs",
