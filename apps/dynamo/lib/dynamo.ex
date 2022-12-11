@@ -25,17 +25,20 @@ defmodule Dynamo do
     check_alive_timer: nil, # is much longer than heartbeat timer, in order to check liveness of prefer list
     response_list: nil, #store which node(in prefer_list)has send heartbeat response
     heartbeat_timer: nil,
-    heartbeat_timeout: nil
+    heartbeat_timeout: nil,
+    client: nil
   )
   @spec new_configuration(
     [atom()],
     %{},
-    non_neg_integer()
+    non_neg_integer(),
+    atom()
   ):: %Dynamo{}
   def new_configuration(
     prefer_list,
     key_range_map,
-    heartbeat_timeout
+    heartbeat_timeout,
+    client
   ) do
     %Dynamo{
       hash_table: Map.new(),
@@ -44,7 +47,10 @@ defmodule Dynamo do
       prefer_list: prefer_list, #{:a,:b,:c}
       response_list: [], #{:a,:b,:c}
       key_range_map: key_range_map, #{ab:[1,3], bc:[4,6]}
-      heartbeat_timeout: heartbeat_timeout}
+      heartbeat_timeout: heartbeat_timeout,
+      client: client
+    }
+
   end
   @spec virtual_node(%Dynamo{},any)::no_return()
   def virtual_node(state,extra_state) do
@@ -118,6 +124,31 @@ defmodule Dynamo do
         raise "wait to write"
     end
   end
+end
+
+defmodule Dynamo.PhysicalNode do
+  import Emulation, only: [send: 2]
+
+  import Kernel,
+    except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
+
+  alias __MODULE__
+  defstruct(
+    node_map: nil,
+    )
+    @spec physical_node(%PhysicalNode{},any)::no_return()
+    def physical_node(state,extra_state) do
+      receive do
+        {sender, {:get, key}} ->
+          # transfer message to virtual node
+          raise "wait to write"
+        {sender, {:put, key, value, hash_code}} ->
+          # transfer message to virtual node
+          raise "wait to write"
+      end
+
+    end
+
 end
 
 defmodule Dynamo.Client do
