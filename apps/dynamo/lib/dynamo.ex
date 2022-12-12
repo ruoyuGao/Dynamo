@@ -4,7 +4,7 @@ defmodule Dynamo do
   """
   # Shouldn't need to spawn anything from this module, but if you do
   # you should add spawn to the imports.
-  import Emulation, only: [send: 2, timer: 1, now: 0, whoami: 0]
+  import Emulation, only: [send: 2, timer: 2, now: 0, whoami: 0, cancel_timer: 1]
 
   import Kernel,
     except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
@@ -17,12 +17,13 @@ defmodule Dynamo do
   # below Info
   require Logger
   defstruct(
-    hash_table: nil, #store <key,<value,value_vector_clock,is_replica,hash_code>>
+    hash_table: nil, #store {key : {value,value_vector_clock,is_replica,hash_code} }
     hash_trees_map: nil, #use to store several hash tree for several key range
     key_range_map: nil, # store <ab: [1,3]>
     message_list: nil,#same as message_list, used for gossip
     prefer_list: nil,
     check_alive_timer: nil, # is much longer than heartbeat timer, in order to check liveness of prefer list
+    check_alive_timeout: nil,
     response_list: nil, #store which node(in prefer_list)has send heartbeat response
     heartbeat_timer: nil,
     heartbeat_timeout: nil,
@@ -43,7 +44,11 @@ defmodule Dynamo do
     %Dynamo{
       hash_table: Map.new(),
       hash_trees_map: %{},#{a: 1, b: 1, c:1}
+<<<<<<< HEAD
       message_list: [],#{a:1}
+=======
+      message_list: [], #{:a}
+>>>>>>> 972a1dcb69c1b4e1c8596319c7152119c1e2287d
       prefer_list: prefer_list, #{:a,:b,:c}
       response_list: [], #{:a,:b,:c}
       key_range_map: key_range_map, #{a:[1,3], b:[4,6]}
@@ -52,6 +57,7 @@ defmodule Dynamo do
     }
 
   end
+<<<<<<< HEAD
   @spec convert_to_hash_list(map())::list()
   def convert_to_hash_list(hash_table) do
     Enum.map(hash_table,fn({key,objectEntry}) -> {objectEntry.hash_code}end)
@@ -62,8 +68,60 @@ defmodule Dynamo do
     obj
     #{obj_key, state.hash_table[obj_key]}
   end
+=======
+
+  ###########     Utility Functions Starts     ##########
+  # Save a handle to the hearbeat timer.
+  @spec save_heartbeat_timer(%Dynamo{}, reference()) :: %Dynamo{}
+  defp save_heartbeat_timer(state, timer) do
+    %{state | heartbeat_timer: timer}
+  end
+
+  @spec reset_heartbeat_timer(%Dynamo{}) :: %Dynamo{}
+  defp reset_heartbeat_timer(state) do
+    if state.hearbeat_timer != nil do
+      cancel_timer(state.heatbeat_timer)
+    end
+    new_heatbeat_timer = timer(state.heatbeat_timeout, :heatrbeat_timer)
+    save_heartbeat_timer(state, new_heatbeat_timer)
+  end
+
+  # Save a handle to the hearbeat timer.
+  @spec save_checkalive_timer(%Dynamo{}, reference()) :: %Dynamo{}
+  defp save_checkalive_timer(state, timer) do
+    %{state | check_alive_timer: timer}
+  end
+
+  @spec reset_checkalive_timer(%Dynamo{}) :: %Dynamo{}
+  defp reset_checkalive_timer(state) do
+    if state.check_alive_timer != nil do
+      cancel_timer(state.check_alive_timer)
+    end
+    new_checkalive_timer = timer(state.check_alive_timeout, :check_alive_timer)
+    save_checkalive_timer(state, new_checkalive_timer)
+  end
+
+  @spec gossip_send(%Dynamo{}, map(), atom()) :: any()
+  defp gossip_send(state, prefer_map, dead) do
+    # find the next node of this dead note on the prefer_list
+    # send messages to all that follows
+    dead_idx = prefer_map[dead]
+    prefer_map
+      |> Enum.map(fn {pid, idx} ->
+        if idx == dead_idx + 1 do
+          #send {:gossip_reconfig, dead_node} to the next node for dead_node
+          send(pid, {:gossip_reconfig, dead})
+        else
+          #send {:gossip, dead_node} to other nodes(except the next node of dead_node)
+          send(pid, {:gossip, dead})
+        end
+      end)
+  end
+  ##########     Utility Function Ends     ##########
+
+>>>>>>> 972a1dcb69c1b4e1c8596319c7152119c1e2287d
   @spec virtual_node(%Dynamo{},any)::no_return()
-  def virtual_node(state,extra_state) do
+  def virtual_node(state, extra_state) do
     receive do
       {sender, %Dynamo.PutEntryRequest{
         key: key,
@@ -149,31 +207,75 @@ defmodule Dynamo do
       {sender, {:put, key, value, hash_code}} ->
         #coordinate node receive put request from client, broadcast PutEntryRequest to prefer list
         raise "wait to write"
+
       :heartbeat_timer ->
         #When heartbeat is timeout, reset timer and broadcast to prefer list
-        raise "wait to write"
+        state.prefer_list
+          |> Enum.map(fn pid -> send(pid, :heartbeat) end)
+        # reset heartbeat timer
+        state = reset_heartbeat_timer(state)
+        virtual_node(state, extra_state)
+
       {sender, :heartbeat} ->
         # receiver heartbeat from other nodes, send ok to that node
         send(sender, :alive)
+        virtual_node(state, extra_state)
+
       {sender, :alive} ->
         #receive response from alive nodes in prefer list
         #add the sender in prefer list
-        raise "wait to write"
+        state = %{state | response_list: state.response_list ++ [sender] }
+        virtual_node(state, extra_state)
+
       :check_alive_timer ->
         # check if we have received every response from prefer list
         # if response_list == prefer_list, reset response_list
         # else start gossip
         #send {:gossip, dead_node} to other nodes(except the next node of dead_node)
         #send {:gossip_reconfig, dead_node} to the next node for dead_node
-        raise "wait to write"
+        diff = state.prefer_list -- state.response_list
+        indexed_prefer_list = Enum.with_index(state.prefer_list)
+        prefer_map = indexed_prefer_list
+                      |> Map.new(fn {pid, idx} -> {pid, idx} end)
+        diff
+          |> Enum.map(fn dead -> gossip_send(state, prefer_map, dead) end)
+        state = %{state | response_list: []}
+        state = reset_checkalive_timer(state)
+        virtual_node(state, extra_state)
+
       {sender,{:gossip_reconfig, dead_node}} ->
         #change all the data in the coordinate key range for dead_node to this node(the previous range of current node coordinate range)
         #notice physical node that coordinate range of dead_node is replaced by current node
-        raise "wait to write"
+        dead_key_range = state.key_range_map[dead_node] # is hash
+        first = hd(dead_key_range)
+        last = List.last(dead_key_range)
+        reconfiged_hash_table =
+            state.hash_table |> Enum.map(fn {k, obj} ->
+              if obj.hash_code >= first and obj.hash_code < last do
+                {k, %{obj | is_replica: False}}
+              else
+                {k, obj}
+              end
+            end)
+        state = %{state | hash_table: reconfiged_hash_table}
+        virtual_node(state, extra_state)
+
       {sender, {:gossip, dead_node}} ->
         # if dead_node in the message list and not in prefer list, ignore it
         # else delete this node in prefer_list, and add its in message_list
-        raise "wait to write"
+        state =
+          if Enum.member?(state.prefer_list, dead_node) do
+            %{state | prefer_list: List.delete(state.prefer_list, dead_node)}
+          else
+            state
+          end
+        state =
+          if not Enum.member?(state.message_list, dead_node) do
+            %{state | message_list: state.message_list ++ [dead_node]}
+          else
+            state
+          end
+        virtual_node(state, extra_state)
     end
   end
 end
@@ -186,7 +288,7 @@ defmodule Dynamo.PhysicalNode do
 
   alias __MODULE__
   defstruct(
-    node_map: nil,
+    node_map: nil, # {virtual node key => [key range]}
     )
     @spec physical_node(%PhysicalNode{},any)::no_return()
     def physical_node(state,extra_state) do
@@ -196,6 +298,7 @@ defmodule Dynamo.PhysicalNode do
           raise "wait to write"
         {sender, {:put, key, value, hash_code}} ->
           # transfer message to virtual node
+          # node_map[virtual_node].first()
           raise "wait to write"
       end
 
