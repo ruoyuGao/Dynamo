@@ -44,11 +44,8 @@ defmodule Dynamo do
     %Dynamo{
       hash_table: Map.new(),
       hash_trees_map: %{},#{a: 1, b: 1, c:1}
-<<<<<<< HEAD
       message_list: [],#{a:1}
-=======
       message_list: [], #{:a}
->>>>>>> 972a1dcb69c1b4e1c8596319c7152119c1e2287d
       prefer_list: prefer_list, #{:a,:b,:c}
       response_list: [], #{:a,:b,:c}
       key_range_map: key_range_map, #{a:[1,3], b:[4,6]}
@@ -57,7 +54,7 @@ defmodule Dynamo do
     }
 
   end
-<<<<<<< HEAD
+
   @spec convert_to_hash_list(map())::list()
   def convert_to_hash_list(hash_table) do
     Enum.map(hash_table,fn({key,objectEntry}) -> {objectEntry.hash_code}end)
@@ -68,7 +65,6 @@ defmodule Dynamo do
     obj
     #{obj_key, state.hash_table[obj_key]}
   end
-=======
 
   ###########     Utility Functions Starts     ##########
   # Save a handle to the hearbeat timer.
@@ -119,7 +115,6 @@ defmodule Dynamo do
   end
   ##########     Utility Function Ends     ##########
 
->>>>>>> 972a1dcb69c1b4e1c8596319c7152119c1e2287d
   @spec virtual_node(%Dynamo{},any)::no_return()
   def virtual_node(state, extra_state) do
     receive do

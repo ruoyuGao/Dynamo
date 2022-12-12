@@ -20,6 +20,12 @@ defmodule RaftTest do
 
   test "Build hash tree with own hash function" do
     mt = MerkleTree.new(["a", "b", "c", "d"],&hash_function/1)
-    IO.inspect(mt)
+    root_node_hash = mt.root().value
+    IO.puts(root_node_hash)
+    children_list = mt.root().children
+    {left_node, remain_list} = List.pop_at(children_list, 0)
+    left_node_hash = left_node.value
+    IO.puts(left_node_hash)
+    #IO.inspect(mt)
   end
 end
