@@ -44,7 +44,6 @@ defmodule Dynamo do
     %Dynamo{
       hash_table: Map.new(),
       hash_trees_map: %{},#{a: 1, b: 1, c:1}
-      message_list: [],#{a:1}
       message_list: [], #{:a}
       prefer_list: prefer_list, #{:a,:b,:c}
       response_list: [], #{:a,:b,:c}
