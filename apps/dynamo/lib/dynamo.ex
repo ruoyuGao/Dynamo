@@ -47,11 +47,22 @@ defmodule Dynamo do
       message_list: [], #{:a}
       prefer_list: prefer_list, #{:a,:b,:c}
       response_list: [], #{:a,:b,:c}
-      key_range_map: key_range_map, #{ab:[1,3], bc:[4,6]}
+      key_range_map: key_range_map, #{a:[1,3], b:[4,6]}
       heartbeat_timeout: heartbeat_timeout,
       client: client
     }
 
+  end
+
+  @spec convert_to_hash_list(map())::list()
+  def convert_to_hash_list(hash_table) do
+    Enum.map(hash_table,fn({key,objectEntry}) -> {objectEntry.hash_code}end)
+  end
+  @spec find_key_value_from_hash(%Dynamo{}, non_neg_integer())::{any(),%Dynamo.ObjectEntry{}}
+  def find_key_value_from_hash(state,hash_code) do
+    obj = state.hash_table |> Enum.find(fn {key, val} -> val.hash_code == hash_code end)
+    obj
+    #{obj_key, state.hash_table[obj_key]}
   end
 
   ###########     Utility Functions Starts     ##########
@@ -139,7 +150,49 @@ defmodule Dynamo do
         value_vector_clock: value_vector_clock
       }} ->
         #if receive more than R response, send result to client
+        # if is not same , start MTCHeck for the first time, put root node in extra state
+        if is_same == 0 do
+          #Start MTCheck
+          hash_code = state.hash_table[key].hash_code
+          obj_key = state.key_range_map |> Enum.find(fn {key, val} ->
+            if hash_code >= hd(val) and hash_code<=List.last(val) do
+              {key, val}
+            end
+          end) |> elem(0)
+          hash_tree_root = state.hash_trees_map[obj_key].root()
+          extra_state = hash_tree_root.children
+          hash_tree_root_left_child = List.first(extra_state)
+          send(sender,{:MTCheck, hash_tree_root_left_child})
+          virtual_node(state,extra_state)
+        end
         raise "wait to write"
+      {sender,{:MTCheckResponse, node_is_same}} ->
+        {checked_node,extra_state} = List.pop_at(extra_state, 0)
+        if node_is_same == 0 do
+          if length(checked_node.children) == 0 do
+            hash_code = checked_node.value
+            {key,object} = find_key_value_from_hash(state, hash_code)
+            new_updateHashTable = Dynamo.UpdateHashTableRequest.new(key,object.value,hash_code,object.value_vector_clock)
+            send(sender,new_updateHashTable)
+          else
+            extra_state = extra_state ++ checked_node.children
+          end
+        end
+        head = List.first(extra_state)
+        send(sender,{:MTCheck, head})
+        virtual_node(state,extra_state)
+      {sender, {:MTCheck, tree_node}} ->
+        {head,extra_state} = List.pop_at(extra_state, 0)
+        node_is_same = 1
+        if head.value != tree_node.value do
+          node_is_same = 0
+          extra_state = extra_state ++ tree_node.children
+          send(sender,{:MTCheckResponse, node_is_same})
+          virtual_node(state,extra_state)
+        else
+          send(sender,{:MTCheckResponse, node_is_same})
+          virtual_node(state,extra_state)
+        end
       {sender, {:get, key}} ->
         #receive get request from client
         #if the node store this key and it is not replica, broadcast GetEntryRequest

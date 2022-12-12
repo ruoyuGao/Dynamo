@@ -157,3 +157,30 @@ defmodule Dynamo.GetEntryResponse do
     }
   end
 end
+
+defmodule Dynamo.UpdateHashTableRequest do
+  alias __MODULE__
+  @enforce_keys [:key, :value, :value_vector_clock]
+  defstruct(
+    key: nil,
+    value: nil,
+    hash_code: nil,
+    value_vector_clock: nil
+  )
+
+  @spec new(non_neg_integer(),non_neg_integer(),non_neg_integer(), map())::
+  %UpdateHashTableRequest{
+    key: non_neg_integer(),
+    value: non_neg_integer(),
+    hash_code: non_neg_integer(),
+    value_vector_clock: map()
+  }
+  def new(key, value, hash_code, value_vector_clock) do
+    %UpdateHashTableRequest{
+      key: key,
+      value: value,
+      hash_code: hash_code,
+      value_vector_clock: value_vector_clock
+    }
+  end
+end
