@@ -222,28 +222,45 @@ defmodule Dynamo do
 end
 
 defmodule Dynamo.PhysicalNode do
-  import Emulation, only: [send: 2]
+  alias Dynamo.PhysicalNode
+  import Emulation, only: [send: 2, whoami: 0]
 
   import Kernel,
     except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
 
   alias __MODULE__
-  defstruct(
-    node_map: nil, # {virtual node key => [key range]}
-    )
-    @spec physical_node(%PhysicalNode{},any)::no_return()
-    def physical_node(state,extra_state) do
-      receive do
-        {sender, {:get, key}} ->
-          # transfer message to virtual node
-          raise "wait to write"
-        {sender, {:put, key, value, hash_code}} ->
-          # transfer message to virtual node
-          # node_map[virtual_node].first()
-          raise "wait to write"
-      end
+  defstruct(node_map: nil) # {virtual node key => [key range list]}
 
+  @spec new_physical_node(map()) :: %PhysicalNode{}
+  def new_physical_node(node_map) do
+    %PhysicalNode{node_map: node_map}
+  end
+
+  @spec physical_node(%PhysicalNode{},any)::no_return()
+  def physical_node(state,extra_state) do
+    receive do
+      {sender, {:get, key}} ->
+        # transfer message to virtual node
+        virtual_nodes = Map.keys(state.node_map)
+        target = hd(virtual_nodes) # pick the first one to send
+        send(target, {:get, key})
+        physical_node(state,extra_state)
+
+      {sender, {:put, key, value, hash_code}} ->
+        # transfer message to virtual node
+        found =
+          state.node_map |> Enum.filter(fn {vn, range} -> hash_code >= hd(range) and hash_code < List.last(range) end)
+        # node_map[virtual_node].first()
+        if length(found)>0 do
+          {vn, rg} = hd(found)
+          send(vn, {:put, key, value, hash_code})
+        else
+          IO.puts("Warning! range not found in physical node: #{whoami()}'s node_map list!")
+        end
+        physical_node(state,extra_state)
     end
+
+  end
 
 end
 
