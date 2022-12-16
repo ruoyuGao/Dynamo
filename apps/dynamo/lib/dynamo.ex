@@ -112,6 +112,12 @@ defmodule Dynamo do
         end
       end)
   end
+  # broadcast to prefer list with any message
+  @spec broadcast_to_prefer_list(%Dynamo{}, any())::no_return()
+  defp broadcast_to_prefer_list(state, message) do
+    state.prefer_list |> Enum.map(fn pid -> send(pid, message) end)
+  end
+
   ##########     Utility Function Ends     ##########
 
   @spec virtual_node(%Dynamo{},any)::no_return()
@@ -142,8 +148,27 @@ defmodule Dynamo do
         hash_tree_root: hash_tree_root
       }} ->
         #send GetEntryResponse to sender(2cond: tree is same or not)
+        hash_code = state.hash_table[key].hash_code
+        value_vector_clock = state.hash_table[key].value_vector_clock
+        value = state.hash_table[key].value
+        obj_key = state.key_range_map |> Enum.find(fn {key, val} ->
+          if hash_code >= hd(val) and hash_code<=List.last(val) do
+            {key, val}
+          end
+        end) |> elem(0)
+        hash_tree_root_replica = state.hash_trees_map[obj_key].root()
         #start GetEntryresponse when root is not same
-        raise "wait to write"
+        if hash_tree_root.value != hash_tree_root_replica.value do
+          extra_state = hash_tree_root_replica.children
+          is_same = 0
+          new_getEntryResponse = Dynamo.GetEntryResponse.new(key, value, is_same, value_vector_clock)
+          broadcast_to_prefer_list(state,new_getEntryResponse)
+        else
+          is_same = 1
+          new_getEntryResponse = Dynamo.GetEntryResponse.new(key, value, is_same, value_vector_clock)
+          broadcast_to_prefer_list(state,new_getEntryResponse)
+        end
+        virtual_node(state,extra_state)
       {sender,%Dynamo.GetEntryResponse{
         key: key,
         value: value,

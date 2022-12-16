@@ -105,7 +105,7 @@ defmodule Dynamo.GetEntryRequest do
   GetEntry RPC request, coordinate node use this RPC to call replica node
   """
   alias __MODULE__
-  @enforce_keys [:key, :hash_tree]
+  @enforce_keys [:key, :hash_tree_root]
   defstruct(
     key: nil,
     hash_tree_root: nil
