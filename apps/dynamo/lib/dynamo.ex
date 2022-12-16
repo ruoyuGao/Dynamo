@@ -27,19 +27,30 @@ defmodule Dynamo do
     response_list: nil, #store which node(in prefer_list)has send heartbeat response
     heartbeat_timer: nil,
     heartbeat_timeout: nil,
-    client: nil
+    client: nil,
+    response_cash_map: nil,
+    response_cash_count_map: nil,
+    w: nil,
+    r: nil,
+    n: nil
   )
   @spec new_configuration(
     [atom()],
     %{},
     non_neg_integer(),
-    atom()
+    atom(),
+    non_neg_integer(),
+    non_neg_integer(),
+    non_neg_integer()
   ):: %Dynamo{}
   def new_configuration(
     prefer_list,
     key_range_map,
     heartbeat_timeout,
-    client
+    client,
+    w,
+    r,
+    n
   ) do
     %Dynamo{
       hash_table: Map.new(),
@@ -49,7 +60,12 @@ defmodule Dynamo do
       response_list: [], #{:a,:b,:c}
       key_range_map: key_range_map, #{a:[1,3], b:[4,6]}
       heartbeat_timeout: heartbeat_timeout,
-      client: client
+      client: client,
+      response_cash_map: %{},#store cash for return message to clinet
+      response_cash_count_map: %{},
+      w: w,
+      r: r,
+      n: n
     }
 
   end
@@ -147,7 +163,7 @@ defmodule Dynamo do
         key: key,
         hash_tree_root: hash_tree_root
       }} ->
-        #send GetEntryResponse to sender(2cond: tree is same or not)
+        #calculate all the variable we need
         hash_code = state.hash_table[key].hash_code
         value_vector_clock = state.hash_table[key].value_vector_clock
         value = state.hash_table[key].value
@@ -157,6 +173,11 @@ defmodule Dynamo do
           end
         end) |> elem(0)
         hash_tree_root_replica = state.hash_trees_map[obj_key].root()
+        #save first kind of value of key
+        temp_cash_count_map = Map.put(state.response_cash_count_map, key, 1)
+        temp_cash_map = Map.put(state.response_cash_map, key, [value,value_vector_clock])
+        state = %{state | response_cash_count_map: temp_cash_count_map}
+        state = %{state | response_cash_map: temp_cash_map}
         #start GetEntryresponse when root is not same
         if hash_tree_root.value != hash_tree_root_replica.value do
           extra_state = hash_tree_root_replica.children
@@ -176,6 +197,24 @@ defmodule Dynamo do
         value_vector_clock: value_vector_clock
       }} ->
         #if receive more than R response, send result to client
+
+        if Map.has_key?(state.response_cash_map, key) == true do
+          temp_response_cash_count_map = Map.put(state.response_cash_count_map,key,response_cash_count_map[key]+1)
+          state = %{state | response_cash_count_map: temp_response_cash_count_map}
+          if stat.hash_table[key].value != value do
+            temp_response_cash_map = Map.replace!(response_cash_map, key, response_cash_map[key] ++ [value,value_vector_clock])
+            state = %{state | response_cash_map: temp_response_cash_count_map}
+          end
+          if state.response_cash_count_map[key] > state.r do
+            send(state.client,response_cash_map[key])
+            temp_response_cash_count_map = Map.delete(response_cash_count_map,key)
+            temp_response_cash_map = Map.delete(response_cash_map,key)
+            state = %{state | response_cash_map: temp_response_cash_map}
+            state = %{state | response_cash_count_map: temp_response_cash_count_map}
+          end
+        else
+          IO.puts("response can not find the key in cash, so it may have some problem")
+        end
         # if is not same , start MTCHeck for the first time, put root node in extra state
         if is_same == 0 do
           #Start MTCheck
@@ -191,7 +230,7 @@ defmodule Dynamo do
           send(sender,{:MTCheck, hash_tree_root_left_child})
           virtual_node(state,extra_state)
         end
-        raise "wait to write"
+        virtual_node(state,extra_state)
       {sender,{:MTCheckResponse, node_is_same}} ->
         {checked_node,extra_state} = List.pop_at(extra_state, 0)
         if node_is_same == 0 do
