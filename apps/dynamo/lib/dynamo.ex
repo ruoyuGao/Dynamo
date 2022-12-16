@@ -139,9 +139,10 @@ defmodule Dynamo do
         raise "wait to write"
       {sender, %Dynamo.GetEntryRequest{
         key: key,
-        hash_tree: hash_tree
+        hash_tree_root: hash_tree_root
       }} ->
         #send GetEntryResponse to sender(2cond: tree is same or not)
+        #start GetEntryresponse when root is not same
         raise "wait to write"
       {sender,%Dynamo.GetEntryResponse{
         key: key,

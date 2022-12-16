@@ -108,18 +108,18 @@ defmodule Dynamo.GetEntryRequest do
   @enforce_keys [:key, :hash_tree]
   defstruct(
     key: nil,
-    hash_tree: nil
+    hash_tree_root: nil
   )
 
 alias Dynamo.GetEntryRequest
   @spec new(non_neg_integer(), any()) :: %GetEntryRequest{
     key: non_neg_integer(),
-    hash_tree: any()
+    hash_tree_root: any()
   }
   def new(key, hash_tree) do
     %GetEntryRequest{
       key: key,
-      hash_tree: hash_tree
+      hash_tree_root: hash_tree
     }
   end
 end
