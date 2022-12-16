@@ -199,16 +199,16 @@ defmodule Dynamo do
         #if receive more than R response, send result to client
 
         if Map.has_key?(state.response_cash_map, key) == true do
-          temp_response_cash_count_map = Map.put(state.response_cash_count_map,key,response_cash_count_map[key]+1)
+          temp_response_cash_count_map = Map.put(state.response_cash_count_map,key,state.response_cash_count_map[key]+1)
           state = %{state | response_cash_count_map: temp_response_cash_count_map}
-          if stat.hash_table[key].value != value do
-            temp_response_cash_map = Map.replace!(response_cash_map, key, response_cash_map[key] ++ [value,value_vector_clock])
+          if state.hash_table[key].value != value do
+            temp_response_cash_map = Map.replace!(state.response_cash_map, key, state.response_cash_map[key] ++ [value,value_vector_clock])
             state = %{state | response_cash_map: temp_response_cash_count_map}
           end
           if state.response_cash_count_map[key] > state.r do
-            send(state.client,response_cash_map[key])
-            temp_response_cash_count_map = Map.delete(response_cash_count_map,key)
-            temp_response_cash_map = Map.delete(response_cash_map,key)
+            send(state.client,state.response_cash_map[key])
+            temp_response_cash_count_map = Map.delete(state.response_cash_count_map,key)
+            temp_response_cash_map = Map.delete(state.response_cash_map,key)
             state = %{state | response_cash_map: temp_response_cash_map}
             state = %{state | response_cash_count_map: temp_response_cash_count_map}
           end
