@@ -112,9 +112,9 @@ defmodule Dynamo do
     save_checkalive_timer(state, new_checkalive_timer)
   end
 
-  @spec gossip_send(%Dynamo{}, map(), atom()) :: any()
-  defp gossip_send(state, prefer_map, dead) do
-    # find the next node of this dead note on the prefer_list
+  @spec gossip_send(map(), atom()) :: [any()]
+  defp gossip_send(prefer_map, dead) do
+    # find the next node of this dead note on the prefer_list, send :gossip_reconfig to it.
     # send messages to all that follows
     dead_idx = prefer_map[dead]
     prefer_map
@@ -292,12 +292,13 @@ defmodule Dynamo do
         # else start gossip
         #send {:gossip, dead_node} to other nodes(except the next node of dead_node)
         #send {:gossip_reconfig, dead_node} to the next node for dead_node
-        diff = state.prefer_list -- state.response_list
+        unique_response_list = Enum.uniq(state.resonse_list) # keep every alive node only once
+        diff = state.prefer_list -- unique_response_list
         indexed_prefer_list = Enum.with_index(state.prefer_list)
         prefer_map = indexed_prefer_list
                       |> Map.new(fn {pid, idx} -> {pid, idx} end)
         diff
-          |> Enum.map(fn dead -> gossip_send(state, prefer_map, dead) end)
+          |> Enum.map(fn dead -> gossip_send(prefer_map, dead) end)
         state = %{state | response_list: []}
         state = reset_checkalive_timer(state)
         virtual_node(state, extra_state)
