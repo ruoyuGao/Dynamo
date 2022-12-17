@@ -131,7 +131,8 @@ defmodule Dynamo do
   # broadcast to prefer list with any message
   @spec broadcast_to_prefer_list(%Dynamo{}, any())::no_return()
   defp broadcast_to_prefer_list(state, message) do
-    state.prefer_list |> Enum.map(fn pid -> send(pid, message) end)
+    broadcast_list = Enum.take(state.prefer_list, state.n)
+    broadcast_list |> Enum.map(fn pid -> send(pid, message) end)
   end
 
   @spec hash_function(String.t()) :: String.t()
@@ -140,6 +141,13 @@ defmodule Dynamo do
     result
   end
   ##########     Utility Function Ends     ##########
+
+  @spec become_virtual_node(%Dynamo{}) :: no_return()
+  def become_virtual_node(state) do
+    extra_state = []
+    state = reset_heartbeat_timer(state)
+    virtual_node(state, extra_state)
+  end
 
   @spec virtual_node(%Dynamo{},any)::no_return()
   def virtual_node(state, extra_state) do
@@ -181,16 +189,34 @@ defmodule Dynamo do
         temp_hash_tree_map = Map.replace!(state.hash_tree_map, obj_key, new_hash_tree)
         state = %{state | hash_tree_map: temp_hash_tree_map}
         #send PutEntryResponse to coordinate node
-        new_putEntryResponse = Dynamo.PutEntryResponse.new(hash_code, True)
+        value_int = :binary.decode_unsigned(value)
+        new_putEntryResponse = Dynamo.PutEntryResponse.new(key+value, True)
         send(sender,new_putEntryResponse)
-        "wait to write"
+        virtual_node(state, extra_state)
       {sender, %Dynamo.PutEntryResponse{
-        hash_code: hash_code,
+        key_value: key_value,
         success: success
       }} ->
         #use hash_code to identify the key_value pair
         # use map in extra state to make sure if get more than W response, return message to client
-        raise "wait to write"
+        if success do
+          prev_count =
+          if  Map.has_key?(state.response_cash_count_map,key_value) do
+            state.response_cash_count_map[key_value]
+          else
+            0
+          end
+          temp_response_cash_count_map = Map.put(state.response_cash_count_map,key_value,prev_count+1)
+          state = %{state | response_cash_count_map: temp_response_cash_count_map}
+          if state.response_cash_count_map[key_value] > state.w do
+            send(state.client,:ok)
+            temp_response_cash_count_map = Map.delete(state.response_cash_count_map,key_value)
+            state = %{state | response_cash_count_map: temp_response_cash_count_map}
+            virtual_node(state,extra_state)
+          end
+          virtual_node(state,extra_state)
+        end
+        virtual_node(state,extra_state)
       {sender, %Dynamo.GetEntryRequest{
         key: key,
         hash_tree_root: hash_tree_root
@@ -308,6 +334,7 @@ defmodule Dynamo do
         new_getEntryRequest = Dynamo.GetEntryRequest.new(key, hash_tree_root)
         broadcast_to_prefer_list(state,new_getEntryRequest)
         virtual_node(state,extra_state)
+
       {sender, {:put, key, value, hash_code}} ->
         #coordinate node receive put request from client, broadcast PutEntryRequest to prefer list
         raise "wait to write"
@@ -380,6 +407,14 @@ defmodule Dynamo do
             state
           end
         virtual_node(state, extra_state)
+
+        {state, %Dynamo.UpdateHashTableRequest{
+          key: key,
+          value: value,
+          hash_code: hash_code,
+          value_vector_clock: value_vector_clock
+        }} ->
+          #update hash table and hash node
     end
   end
 end

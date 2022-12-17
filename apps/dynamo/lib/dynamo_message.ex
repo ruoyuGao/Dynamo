@@ -78,9 +78,9 @@ defmodule Dynamo.PutEntryResponse do
   Response for the PutEntryRequest
   """
   alias __MODULE__
-  @enforce_keys [:hash_code, :success]
+  @enforce_keys [:key_value, :success]
   defstruct(
-    hash_code: nil,
+    key_value: nil,
     success: nil
   )
 
@@ -89,12 +89,12 @@ defmodule Dynamo.PutEntryResponse do
   """
 alias Dynamo.PutEntryResponse
   @spec new(non_neg_integer(),boolean()):: %PutEntryResponse{
-    hash_code: non_neg_integer(),
+    key_value: non_neg_integer(),
     success: boolean()
   }
-  def new(hash_code, success) do
+  def new(key_value, success) do
     %PutEntryResponse{
-      hash_code: hash_code,
+      key_value: key_value,
       success: success
     }
   end
