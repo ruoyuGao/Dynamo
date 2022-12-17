@@ -134,6 +134,11 @@ defmodule Dynamo do
     state.prefer_list |> Enum.map(fn pid -> send(pid, message) end)
   end
 
+  @spec hash_function(String.t()) :: String.t()
+  def hash_function(meta_data) do
+    result = MerkleTree.Crypto.hash(meta_data,:md5)
+    result
+  end
   ##########     Utility Function Ends     ##########
 
   @spec virtual_node(%Dynamo{},any)::no_return()
@@ -153,16 +158,28 @@ defmodule Dynamo do
             temp_vector_clock = Map.update!(state.hash_table[key].value_vector_clock, sender, &(&1 + 1))
             temp_entry_obj = state.hash_table[key]
             temp_entry_obj = %{temp_entry_obj | value_vector_clock: temp_vector_clock}
+            temp_entry_obj = %{temp_entry_obj | value: value}
+            temp_entry_obj =  %{temp_entry_obj | hash_code: hash_code}
             temp_hash_table = Map.replace!(state.hash_table, key, temp_entry_obj)
             state = %{state | hash_table: temp_hash_table}
           end
         else
-
+          is_replica = 1
+          new_entry_obj = Dynamo.ObjectEntry.putObject(value, value_vector_clock, is_replica, hash_code)
+          temp_hash_table = Map.put(state.hash_table, key, new_entry_obj)
+          state = %{state | hash_table: temp_hash_table}
         end
-
-
         #use hash_code to search which key range it belongs to, reconstruct the hash_tree
-
+        obj_key = state.key_range_map |> Enum.find(fn {key, val} ->
+          if hash_code >= hd(val) and hash_code<=List.last(val) do
+            {key, val}
+          end
+        end) |> elem(0)
+        hash_tree_list = state.hash_trees_map[obj_key].blocks()
+        hash_tree_list = hash_tree_list ++ [hash_code]
+        new_hash_tree = MerkleTree.new(hash_tree_list,&hash_function/1)
+        temp_hash_tree_map = Map.replace!(state.hash_tree_map, obj_key, new_hash_tree)
+        state = %{state | hash_tree_map: temp_hash_tree_map}
         #send PutEntryResponse to coordinate node
         new_putEntryResponse = Dynamo.PutEntryResponse.new(hash_code, True)
         send(sender,new_putEntryResponse)
