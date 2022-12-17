@@ -134,6 +134,11 @@ defmodule Dynamo do
     state.prefer_list |> Enum.map(fn pid -> send(pid, message) end)
   end
 
+  @spec hash_function(String.t()) :: String.t()
+  def hash_function(meta_data) do
+    result = MerkleTree.Crypto.hash(meta_data,:md5)
+    result
+  end
   ##########     Utility Function Ends     ##########
 
   @spec virtual_node(%Dynamo{},any)::no_return()
@@ -147,10 +152,37 @@ defmodule Dynamo do
       }} ->
         # if vector is earlier than current object vector_clock, do not update
         # else update the object in hash_table
-
+        if Map.has_key?(state.hash_table, key) == True do
+          if value_vector_clock[sender] >= state.hash_table[key].value_vector_clock[sender] do
+            new_count = value_vector_clock[sender]
+            temp_vector_clock = Map.update!(state.hash_table[key].value_vector_clock, sender, &(&1 + 1))
+            temp_entry_obj = state.hash_table[key]
+            temp_entry_obj = %{temp_entry_obj | value_vector_clock: temp_vector_clock}
+            temp_entry_obj = %{temp_entry_obj | value: value}
+            temp_entry_obj =  %{temp_entry_obj | hash_code: hash_code}
+            temp_hash_table = Map.replace!(state.hash_table, key, temp_entry_obj)
+            state = %{state | hash_table: temp_hash_table}
+          end
+        else
+          is_replica = 1
+          new_entry_obj = Dynamo.ObjectEntry.putObject(value, value_vector_clock, is_replica, hash_code)
+          temp_hash_table = Map.put(state.hash_table, key, new_entry_obj)
+          state = %{state | hash_table: temp_hash_table}
+        end
         #use hash_code to search which key range it belongs to, reconstruct the hash_tree
-
+        obj_key = state.key_range_map |> Enum.find(fn {key, val} ->
+          if hash_code >= hd(val) and hash_code<=List.last(val) do
+            {key, val}
+          end
+        end) |> elem(0)
+        hash_tree_list = state.hash_trees_map[obj_key].blocks()
+        hash_tree_list = hash_tree_list ++ [hash_code]
+        new_hash_tree = MerkleTree.new(hash_tree_list,&hash_function/1)
+        temp_hash_tree_map = Map.replace!(state.hash_tree_map, obj_key, new_hash_tree)
+        state = %{state | hash_tree_map: temp_hash_tree_map}
         #send PutEntryResponse to coordinate node
+        new_putEntryResponse = Dynamo.PutEntryResponse.new(hash_code, True)
+        send(sender,new_putEntryResponse)
         "wait to write"
       {sender, %Dynamo.PutEntryResponse{
         hash_code: hash_code,
@@ -173,21 +205,16 @@ defmodule Dynamo do
           end
         end) |> elem(0)
         hash_tree_root_replica = state.hash_trees_map[obj_key].root()
-        #save first kind of value of key
-        temp_cash_count_map = Map.put(state.response_cash_count_map, key, 1)
-        temp_cash_map = Map.put(state.response_cash_map, key, [value,value_vector_clock])
-        state = %{state | response_cash_count_map: temp_cash_count_map}
-        state = %{state | response_cash_map: temp_cash_map}
         #start GetEntryresponse when root is not same
         if hash_tree_root.value != hash_tree_root_replica.value do
           extra_state = hash_tree_root_replica.children
           is_same = 0
           new_getEntryResponse = Dynamo.GetEntryResponse.new(key, value, is_same, value_vector_clock)
-          broadcast_to_prefer_list(state,new_getEntryResponse)
+          send(sender,new_getEntryResponse)
         else
           is_same = 1
           new_getEntryResponse = Dynamo.GetEntryResponse.new(key, value, is_same, value_vector_clock)
-          broadcast_to_prefer_list(state,new_getEntryResponse)
+          send(sender,new_getEntryResponse)
         end
         virtual_node(state,extra_state)
       {sender,%Dynamo.GetEntryResponse{
@@ -262,7 +289,25 @@ defmodule Dynamo do
         #receive get request from client
         #if the node store this key and it is not replica, broadcast GetEntryRequest
         #else transfer this message to the next node in prefer list
-        raise "wait to write"
+        #save first kind of value of key
+        value_vector_clock = state.hash_table[key].value_vector_clock
+        value = state.hash_table[key].value
+        hash_code = state.hash_table[key].hash_code
+        obj_key = state.key_range_map |> Enum.find(fn {key, val} ->
+          if hash_code >= hd(val) and hash_code<=List.last(val) do
+            {key, val}
+          end
+        end) |> elem(0)
+        hash_tree_root = state.hash_trees_map[obj_key].root()
+
+        temp_cash_count_map = Map.put(state.response_cash_count_map, key, 1)
+        temp_cash_map = Map.put(state.response_cash_map, key, [value,value_vector_clock])
+        state = %{state | response_cash_count_map: temp_cash_count_map}
+        state = %{state | response_cash_map: temp_cash_map}
+
+        new_getEntryRequest = Dynamo.GetEntryRequest.new(key, hash_tree_root)
+        broadcast_to_prefer_list(state,new_getEntryRequest)
+        virtual_node(state,extra_state)
       {sender, {:put, key, value, hash_code}} ->
         #coordinate node receive put request from client, broadcast PutEntryRequest to prefer list
         raise "wait to write"
