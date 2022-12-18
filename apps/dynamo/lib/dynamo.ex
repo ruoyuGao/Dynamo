@@ -77,8 +77,9 @@ defmodule Dynamo do
   end
   @spec find_key_value_from_hash(%Dynamo{}, non_neg_integer())::{any(),%Dynamo.ObjectEntry{}}
   def find_key_value_from_hash(state,hash_code) do
-    obj = state.hash_table |> Enum.find(fn {key, val} -> val.hash_code == hash_code end)
+    obj = state.hash_table |> Enum.find(fn {key, val} -> val.value == hash_code end)
     obj
+    # the value hash is it self for test case
     #{obj_key, state.hash_table[obj_key]}
   end
 
@@ -91,11 +92,11 @@ defmodule Dynamo do
 
   @spec reset_heartbeat_timer(%Dynamo{}) :: %Dynamo{}
   defp reset_heartbeat_timer(state) do
-    if state.hearbeat_timer != nil do
-      cancel_timer(state.heatbeat_timer)
+    if state.heartbeat_timer != nil do
+      cancel_timer(state.heartbeat_timer)
     end
-    new_heatbeat_timer = timer(state.heatbeat_timeout, :heatrbeat_timer)
-    save_heartbeat_timer(state, new_heatbeat_timer)
+    new_heartbeat_timer = timer(state.heartbeat_timeout, :heartrbeat_timer)
+    save_heartbeat_timer(state, new_heartbeat_timer)
   end
 
   # Save a handle to the hearbeat timer.
@@ -156,6 +157,40 @@ defmodule Dynamo do
     result = MerkleTree.Crypto.hash(meta_data,:md5)
     result
   end
+
+  @spec update_hash_table_tree(%Dynamo{}, non_neg_integer(), any(), non_neg_integer(), map(), atom()):: %Dynamo{}
+  def update_hash_table_tree(state, key, value, hash_code, value_vector_clock, sender) do
+    state =
+      if Map.has_key?(state.hash_table, key) do
+        if value_vector_clock[sender] >= state.hash_table[key].value_vector_clock[sender] do
+          temp_vector_clock = Map.update!(state.hash_table[key].value_vector_clock, sender, value_vector_clock[sender])
+          temp_entry_obj = state.hash_table[key]
+          temp_entry_obj = %{temp_entry_obj | value_vector_clock: temp_vector_clock, value: value, hash_code: hash_code}
+          temp_hash_table = Map.replace!(state.hash_table, key, temp_entry_obj)
+          %{state | hash_table: temp_hash_table}
+        else
+          state # do not update
+        end
+      else
+        is_replica = 1
+        new_entry_obj = Dynamo.ObjectEntry.putObject(value, value_vector_clock, is_replica, hash_code)
+        temp_hash_table = Map.put(state.hash_table, key, new_entry_obj)
+        %{state | hash_table: temp_hash_table}
+      end
+      #use hash_code to search which key range it belongs to, reconstruct the hash_tree
+      {obj_key, key_range} = state.key_range_map |> Enum.find(fn {vn, key_range} ->
+        if hash_code >= hd(key_range) and hash_code<List.last(key_range) do
+          {vn, key_range}
+        end
+      end)
+      # value_list = Enum.map(key_range, fn k -> state.hash_table[k] end)
+      # use this value list to build merkel tree
+      keys_in_range = get_keys_from_range(state, key_range)
+      values_in_range = get_values(state, keys_in_range)
+      new_hash_tree = MerkleTree.new(values_in_range, &hash_function/1)
+      temp_hash_tree_map = Map.replace!(state.hash_tree_map, obj_key, new_hash_tree)
+      state = %{state | hash_tree_map: temp_hash_tree_map}
+  end
   ##########     Utility Function Ends     ##########
 
   @spec become_virtual_node(%Dynamo{}) :: no_return()
@@ -176,36 +211,7 @@ defmodule Dynamo do
       }} ->
         # if vector is earlier than current object vector_clock, do not update
         # else update the object in hash_table
-        state =
-        if Map.has_key?(state.hash_table, key) do
-          if value_vector_clock[sender] >= state.hash_table[key].value_vector_clock[sender] do
-            temp_vector_clock = Map.update!(state.hash_table[key].value_vector_clock, sender, &(&1 + 1))
-            temp_entry_obj = state.hash_table[key]
-            temp_entry_obj = %{temp_entry_obj | value_vector_clock: temp_vector_clock, value: value, hash_code: hash_code}
-            temp_hash_table = Map.replace!(state.hash_table, key, temp_entry_obj)
-            %{state | hash_table: temp_hash_table}
-          else
-            state # do not update
-          end
-        else
-          is_replica = 1
-          new_entry_obj = Dynamo.ObjectEntry.putObject(value, value_vector_clock, is_replica, hash_code)
-          temp_hash_table = Map.put(state.hash_table, key, new_entry_obj)
-          %{state | hash_table: temp_hash_table}
-        end
-        #use hash_code to search which key range it belongs to, reconstruct the hash_tree
-        {obj_key, key_range} = state.key_range_map |> Enum.find(fn {vn, key_range} ->
-          if hash_code >= hd(key_range) and hash_code<List.last(key_range) do
-            {vn, key_range}
-          end
-        end)
-        # value_list = Enum.map(key_range, fn k -> state.hash_table[k] end)
-        # use this value list to build merkel tree
-        keys_in_range = get_keys_from_range(state, key_range)
-        values_in_range = get_values(state, keys_in_range)
-        new_hash_tree = MerkleTree.new(values_in_range, &hash_function/1)
-        temp_hash_tree_map = Map.replace!(state.hash_tree_map, obj_key, new_hash_tree)
-        state = %{state | hash_tree_map: temp_hash_tree_map}
+        state = update_hash_table_tree(state,key,value, hash_code,value_vector_clock,sender)
         #send PutEntryResponse to coordinate node
         new_putEntryResponse = Dynamo.PutEntryResponse.new(hash_code, True)
         send(sender,new_putEntryResponse)
@@ -295,6 +301,13 @@ defmodule Dynamo do
           end) |> elem(0)
           hash_tree_root = state.hash_trees_map[obj_key].root()
           extra_state = hash_tree_root.children
+          if List.first(extra_state) == nil do
+            hash_code = hash_tree_root.value
+            {key,object} = find_key_value_from_hash(state, hash_code)
+            new_updateHashTable = Dynamo.UpdateHashTableRequest.new(key,object.value,object.hash_code,object.value_vector_clock)
+            send(sender,new_updateHashTable)
+            virtual_node(state,extra_state)
+          end
           hash_tree_root_left_child = List.first(extra_state)
           send(sender,{:MTCheck, hash_tree_root_left_child})
           virtual_node(state,extra_state)
@@ -306,7 +319,7 @@ defmodule Dynamo do
           if length(checked_node.children) == 0 do
             hash_code = checked_node.value
             {key,object} = find_key_value_from_hash(state, hash_code)
-            new_updateHashTable = Dynamo.UpdateHashTableRequest.new(key,object.value,hash_code,object.value_vector_clock)
+            new_updateHashTable = Dynamo.UpdateHashTableRequest.new(key,object.value,object.hash_code,object.value_vector_clock)
             send(sender,new_updateHashTable)
           else
             extra_state = extra_state ++ checked_node.children
@@ -352,7 +365,44 @@ defmodule Dynamo do
         virtual_node(state,extra_state)
       {sender, {:put, key, value, hash_code}} ->
         #coordinate node receive put request from client, broadcast PutEntryRequest to prefer list
-        raise "wait to write"
+        is_replica = 0
+        # create value vector clock
+        current_proc = whoami()
+        value_vector_clock =
+          if Map.has_key?(state.hash_table, key) do
+            temp_vector_clock_map = state.hash_table[key].value_vector_clock
+            if Map.has_key?(temp_vector_clock_map, current_proc) do
+              Map.update!(temp_vector_clock_map, sender, &(&1 + 1))
+            else
+              Map.put_new(temp_vector_clock_map, current_proc, 1)
+            end
+          else
+            temp_clock = Map.new()
+            Map.put_new(temp_clock, current_proc, 1)
+          end
+        new_entry_obj = Dynamo.ObjectEntry.putObject(value, value_vector_clock, is_replica, hash_code)
+        temp_hash_table = Map.put(state.hash_table, key, new_entry_obj)
+        %{state | hash_table: temp_hash_table}
+
+        #reconstruct hash tree
+        #use hash_code to search which key range it belongs to, reconstruct the hash_tree
+        {obj_key, key_range} = state.key_range_map |> Enum.find(fn {vn, key_range} ->
+          if hash_code >= hd(key_range) and hash_code<List.last(key_range) do
+            {vn, key_range}
+          end
+        end)
+        # value_list = Enum.map(key_range, fn k -> state.hash_table[k] end)
+        # use this value list to build merkel tree
+        keys_in_range = get_keys_from_range(state, key_range)
+        values_in_range = get_values(state, keys_in_range)
+        new_hash_tree = MerkleTree.new(values_in_range, &hash_function/1)
+        temp_hash_tree_map = Map.replace!(state.hash_tree_map, obj_key, new_hash_tree)
+        state = %{state | hash_tree_map: temp_hash_tree_map}
+
+        #broadcast PutentryRequest
+        new_putEntryRequest = Dynamo.PutEntryRequest.new(key, value, hash_code, value_vector_clock)
+        broadcast_to_prefer_list(state, new_putEntryRequest)
+        virtual_node(state,extra_state)
 
       :heartbeat_timer ->
         #When heartbeat is timeout, reset timer and broadcast to prefer list
@@ -424,13 +474,15 @@ defmodule Dynamo do
           end
         virtual_node(state, extra_state)
 
-        {state, %Dynamo.UpdateHashTableRequest{
+        {sender, %Dynamo.UpdateHashTableRequest{
           key: key,
           value: value,
           hash_code: hash_code,
           value_vector_clock: value_vector_clock
         }} ->
           #update hash table and hash node
+          state = update_hash_table_tree(state,key,value, hash_code,value_vector_clock,sender)
+
     end
   end
 end
