@@ -141,6 +141,7 @@ defmodule Dynamo do
   @spec get_values(%Dynamo{}, [any()]) :: [any()]
   defp get_values(state, keys) do
     values = Enum.map(keys, fn k -> state.hash_table[k].value end)
+    values
   end
 
   # given key range, return all the keys in that range, sorted
@@ -148,8 +149,11 @@ defmodule Dynamo do
   defp get_keys_from_range(state, key_range) do
     first = hd(key_range)
     last = List.last(key_range)
-    keys = Enum.each(state.hash_table, fn {k, v} -> if v.hash_code >=first and v.hash_code < last do k end end)
+    # IO.puts("Based on range #{first} and #{last}, find out hash table #{inspect(state.hash_table)}")
+    keys = Enum.map(state.hash_table, fn {k, v} -> if v.hash_code >=first and v.hash_code < last do k end end)
+    # IO.puts("find out keys #{inspect(keys)}")
     sorted_keys = Enum.sort(keys)
+    sorted_keys
   end
 
   @spec hash_function(String.t()) :: String.t()
@@ -177,19 +181,21 @@ defmodule Dynamo do
         temp_hash_table = Map.put(state.hash_table, key, new_entry_obj)
         %{state | hash_table: temp_hash_table}
       end
-      #use hash_code to search which key range it belongs to, reconstruct the hash_tree
-      {obj_key, key_range} = state.key_range_map |> Enum.find(fn {vn, key_range} ->
-        if hash_code >= hd(key_range) and hash_code<List.last(key_range) do
-          {vn, key_range}
-        end
-      end)
-      # value_list = Enum.map(key_range, fn k -> state.hash_table[k] end)
-      # use this value list to build merkel tree
-      keys_in_range = get_keys_from_range(state, key_range)
-      values_in_range = get_values(state, keys_in_range)
-      new_hash_tree = MerkleTree.new(values_in_range, &hash_function/1)
-      temp_hash_tree_map = Map.replace!(state.hash_tree_map, obj_key, new_hash_tree)
-      state = %{state | hash_tree_map: temp_hash_tree_map}
+    #use hash_code to search which key range it belongs to, reconstruct the hash_tree
+    {obj_key, key_range} = state.key_range_map |> Enum.find(fn {vn, key_range} ->
+      if hash_code >= hd(key_range) and hash_code<List.last(key_range) do
+        {vn, key_range}
+      end
+    end)
+    # value_list = Enum.map(key_range, fn k -> state.hash_table[k] end)
+    # use this value list to build merkel tree
+    IO.puts("get object key #{obj_key} and key range #{inspect(key_range)}")
+    keys_in_range = get_keys_from_range(state, key_range)
+    values_in_range = get_values(state, keys_in_range)
+    new_hash_tree = MerkleTree.new(values_in_range, &hash_function/1)
+    # temp_hash_tree_map = Map.replace!(state.hash_trees_map, obj_key, new_hash_tree)
+    temp_hash_tree_map = Map.put(state.hash_trees_map, obj_key, new_hash_tree) # can be a new tree for the range
+    state = %{state | hash_trees_map: temp_hash_tree_map}
   end
   ##########     Utility Function Ends     ##########
 
@@ -211,39 +217,50 @@ defmodule Dynamo do
       }} ->
         # if vector is earlier than current object vector_clock, do not update
         # else update the object in hash_table
+        IO.puts("<<Dynamo>> received put entry request from #{inspect(sender)} for key #{key}")
         state = update_hash_table_tree(state,key,value, hash_code,value_vector_clock,sender)
         #send PutEntryResponse to coordinate node
         new_putEntryResponse = Dynamo.PutEntryResponse.new(hash_code, True)
         send(sender,new_putEntryResponse)
+        virtual_node(state, extra_state)
+
       {sender, %Dynamo.PutEntryResponse{
         key_value: key_value,
         success: success
       }} ->
         #use hash_code to identify the key_value pair
         # use map in extra state to make sure if get more than W response, return message to client
-        if success do
-          prev_count =
-          if  Map.has_key?(state.response_cash_count_map,key_value) do
-            state.response_cash_count_map[key_value]
-          else
-            0
-          end
-          temp_response_cash_count_map = Map.put(state.response_cash_count_map,key_value,prev_count+1)
-          state = %{state | response_cash_count_map: temp_response_cash_count_map}
-          if state.response_cash_count_map[key_value] > state.w do
-            send(state.client,:ok)
-            temp_response_cash_count_map = Map.delete(state.response_cash_count_map,key_value)
+        state =
+          if success do
+            prev_count =
+            if  Map.has_key?(state.response_cash_count_map,key_value) do
+              state.response_cash_count_map[key_value]
+            else
+              0
+            end
+            temp_response_cash_count_map = Map.put(state.response_cash_count_map,key_value,prev_count+1)
             state = %{state | response_cash_count_map: temp_response_cash_count_map}
-            virtual_node(state,extra_state)
+            state =
+              if state.response_cash_count_map[key_value] > state.w do
+                send(state.client,:ok)
+                temp_response_cash_count_map = Map.delete(state.response_cash_count_map,key_value)
+                %{state | response_cash_count_map: temp_response_cash_count_map}
+                # virtual_node(state,extra_state)
+              else
+                state
+              end
+            state
+          else
+            state
           end
-          virtual_node(state,extra_state)
-        end
         virtual_node(state,extra_state)
+
       {sender, %Dynamo.GetEntryRequest{
         key: key,
         hash_tree_root: hash_tree_root
       }} ->
         #calculate all the variable we need
+        IO.puts("<<Dynamo>> #{inspect(whoami())} received get entry request from #{inspect(sender)} for key #{key}")
         hash_code = state.hash_table[key].hash_code
         value_vector_clock = state.hash_table[key].value_vector_clock
         value = state.hash_table[key].value
@@ -265,6 +282,7 @@ defmodule Dynamo do
           send(sender,new_getEntryResponse)
         end
         virtual_node(state,extra_state)
+
       {sender,%Dynamo.GetEntryResponse{
         key: key,
         value: value,
@@ -272,27 +290,36 @@ defmodule Dynamo do
         value_vector_clock: value_vector_clock
       }} ->
         #if receive more than R response, send result to client
-
-        if Map.has_key?(state.response_cash_map, key) == true do
-          temp_response_cash_count_map = Map.put(state.response_cash_count_map,key,state.response_cash_count_map[key]+1)
-          state = %{state | response_cash_count_map: temp_response_cash_count_map}
-          if state.hash_table[key].value != value do
-            temp_response_cash_map = Map.replace!(state.response_cash_map, key, state.response_cash_map[key] ++ [value,value_vector_clock])
-            state = %{state | response_cash_map: temp_response_cash_count_map}
-          end
-          if state.response_cash_count_map[key] > state.r do
-            send(state.client,state.response_cash_map[key])
-            temp_response_cash_count_map = Map.delete(state.response_cash_count_map,key)
-            temp_response_cash_map = Map.delete(state.response_cash_map,key)
-            state = %{state | response_cash_map: temp_response_cash_map}
+        IO.puts("<<Dynamo>> #{inspect(whoami())} received get entry response from client #{inspect(sender)} for key #{key}")
+        state =
+          if Map.has_key?(state.response_cash_map, key) == true do
+            temp_response_cash_count_map = Map.put(state.response_cash_count_map,key,state.response_cash_count_map[key]+1)
             state = %{state | response_cash_count_map: temp_response_cash_count_map}
+            state =
+              if state.hash_table[key].value != value do
+                temp_response_cash_map = Map.replace!(state.response_cash_map, key, state.response_cash_map[key] ++ [value,value_vector_clock])
+                %{state | response_cash_map: temp_response_cash_count_map}
+              else
+                state
+              end
+            state =
+              if state.response_cash_count_map[key] > state.r do
+                send(state.client,state.response_cash_map[key])
+                temp_response_cash_count_map = Map.delete(state.response_cash_count_map,key)
+                temp_response_cash_map = Map.delete(state.response_cash_map,key)
+                %{state | response_cash_map: temp_response_cash_map, response_cash_count_map: temp_response_cash_count_map}
+              else
+                state
+              end
+            state
+          else
+            IO.puts("response can not find the key in cash, so it may have some problem")
+            state
           end
-        else
-          IO.puts("response can not find the key in cash, so it may have some problem")
-        end
         # if is not same , start MTCHeck for the first time, put root node in extra state
         if is_same == 0 do
           #Start MTCheck
+          IO.puts("start MT check")
           hash_code = state.hash_table[key].hash_code
           obj_key = state.key_range_map |> Enum.find(fn {key, val} ->
             if hash_code >= hd(val) and hash_code<=List.last(val) do
@@ -311,8 +338,10 @@ defmodule Dynamo do
           hash_tree_root_left_child = List.first(extra_state)
           send(sender,{:MTCheck, hash_tree_root_left_child})
           virtual_node(state,extra_state)
+        else
+          virtual_node(state,extra_state)
         end
-        virtual_node(state,extra_state)
+
       {sender,{:MTCheckResponse, node_is_same}} ->
         {checked_node,extra_state} = List.pop_at(extra_state, 0)
         if node_is_same == 0 do
@@ -328,6 +357,7 @@ defmodule Dynamo do
         head = List.first(extra_state)
         send(sender,{:MTCheck, head})
         virtual_node(state,extra_state)
+
       {sender, {:MTCheck, tree_node}} ->
         {head,extra_state} = List.pop_at(extra_state, 0)
         node_is_same = 1
@@ -340,34 +370,54 @@ defmodule Dynamo do
           send(sender,{:MTCheckResponse, node_is_same})
           virtual_node(state,extra_state)
         end
+
       {sender, {:get, key}} ->
         #receive get request from client
         #if the node store this key and it is not replica, broadcast GetEntryRequest
         #else transfer this message to the next node in prefer list
         #save first kind of value of key
-        value_vector_clock = state.hash_table[key].value_vector_clock
-        value = state.hash_table[key].value
-        hash_code = state.hash_table[key].hash_code
-        obj_key = state.key_range_map |> Enum.find(fn {key, val} ->
-          if hash_code >= hd(val) and hash_code<=List.last(val) do
-            {key, val}
+        IO.puts("<<Dynamo>> #{inspect(whoami())} received get from client #{inspect(sender)} for key #{key}")
+        if Map.has_key?(state.hash_table, key) do
+          is_replica = state.hash_table[key].is_replica
+          if is_replica == 0 do
+            IO.puts("<<Dynamo>> node has key, and is not replica, dealing with it")
+            value_vector_clock = state.hash_table[key].value_vector_clock
+            value = state.hash_table[key].value
+            hash_code = state.hash_table[key].hash_code
+            obj_key = state.key_range_map |> Enum.find(fn {key, val} ->
+              if hash_code >= hd(val) and hash_code < List.last(val) do
+                {key, val}
+              end
+            end) |> elem(0)
+            hash_tree_root = state.hash_trees_map[obj_key].root()
+
+            temp_cash_count_map = Map.put(state.response_cash_count_map, key, 1)
+            temp_cash_map = Map.put(state.response_cash_map, key, [value,value_vector_clock])
+            state = %{state | response_cash_count_map: temp_cash_count_map}
+            state = %{state | response_cash_map: temp_cash_map}
+
+            new_getEntryRequest = Dynamo.GetEntryRequest.new(key, hash_tree_root)
+            broadcast_to_prefer_list(state,new_getEntryRequest)
+            virtual_node(state,extra_state)
+          else
+            transfer_to = hd(state.prefer_list)
+            IO.puts("<<Dynamo>> node has key, but node is replica for the key #{key}, transfer to #{transfer_to}")
+            send(transfer_to, {:get, key})
+            virtual_node(state, extra_state)
           end
-        end) |> elem(0)
-        hash_tree_root = state.hash_trees_map[obj_key].root()
+        else
+          transfer_to = hd(state.prefer_list)
+          IO.puts("<<Dynamo>> #{inspect(whoami())} transfer get key #{key} to #{transfer_to}")
+          send(transfer_to, {:get, key})
+          virtual_node(state, extra_state)
+        end
 
-        temp_cash_count_map = Map.put(state.response_cash_count_map, key, 1)
-        temp_cash_map = Map.put(state.response_cash_map, key, [value,value_vector_clock])
-        state = %{state | response_cash_count_map: temp_cash_count_map}
-        state = %{state | response_cash_map: temp_cash_map}
-
-        new_getEntryRequest = Dynamo.GetEntryRequest.new(key, hash_tree_root)
-        broadcast_to_prefer_list(state,new_getEntryRequest)
-        virtual_node(state,extra_state)
       {sender, {:put, key, value, hash_code}} ->
         #coordinate node receive put request from client, broadcast PutEntryRequest to prefer list
         is_replica = 0
         # create value vector clock
         current_proc = whoami()
+        IO.puts("<<Dynamo>> #{inspect(current_proc)} received put from client #{inspect(sender)} for key #{key}")
         value_vector_clock =
           if Map.has_key?(state.hash_table, key) do
             temp_vector_clock_map = state.hash_table[key].value_vector_clock
@@ -382,8 +432,7 @@ defmodule Dynamo do
           end
         new_entry_obj = Dynamo.ObjectEntry.putObject(value, value_vector_clock, is_replica, hash_code)
         temp_hash_table = Map.put(state.hash_table, key, new_entry_obj)
-        %{state | hash_table: temp_hash_table}
-
+        state = %{state | hash_table: temp_hash_table}
         #reconstruct hash tree
         #use hash_code to search which key range it belongs to, reconstruct the hash_tree
         {obj_key, key_range} = state.key_range_map |> Enum.find(fn {vn, key_range} ->
@@ -393,15 +442,18 @@ defmodule Dynamo do
         end)
         # value_list = Enum.map(key_range, fn k -> state.hash_table[k] end)
         # use this value list to build merkel tree
+        IO.puts("obj key #{obj_key} and key range #{inspect(key_range)}")
         keys_in_range = get_keys_from_range(state, key_range)
         values_in_range = get_values(state, keys_in_range)
+        # IO.puts("current hast table #{inspect(state.hash_table)}")
+        # IO.puts("keys in range #{keys_in_range}, values in range #{values_in_range}")
         new_hash_tree = MerkleTree.new(values_in_range, &hash_function/1)
-        temp_hash_tree_map = Map.replace!(state.hash_tree_map, obj_key, new_hash_tree)
-        state = %{state | hash_tree_map: temp_hash_tree_map}
-
+        temp_hash_tree_map = Map.put(state.hash_trees_map, obj_key, new_hash_tree) # obj can refer to a new tree
+        state = %{state | hash_trees_map: temp_hash_tree_map}
         #broadcast PutentryRequest
         new_putEntryRequest = Dynamo.PutEntryRequest.new(key, value, hash_code, value_vector_clock)
         broadcast_to_prefer_list(state, new_putEntryRequest)
+        send(sender, :ok)
         virtual_node(state,extra_state)
 
       :heartbeat_timer ->
@@ -482,6 +534,7 @@ defmodule Dynamo do
         }} ->
           #update hash table and hash node
           state = update_hash_table_tree(state,key,value, hash_code,value_vector_clock,sender)
+          virtual_node(state, extra_state)
 
     end
   end
@@ -538,7 +591,7 @@ defmodule Dynamo.Client do
 
   alias __MODULE__
   defstruct(
-    node_list: nil,
+    node_list: nil
     )
   #node_list store node name and its position on the ring
   @spec new_client(list(any())) :: %Client{node_list: list(any())}
@@ -548,21 +601,26 @@ defmodule Dynamo.Client do
 
   @spec put(%Client{},non_neg_integer(),non_neg_integer())::{:ok, %Client{}}
   def put(client, key, value) do
-    hash_code = key + value # use hash function later
+    hash_code = key #+ value # use hash function later
     #check node_map to find coordinate node
     #send put to coordinate node
+    coordinate = hd(client.node_list)
+    send(coordinate, {:put, key, value, hash_code})
     receive do
       {_, :ok} ->
         {:ok, client}
     end
   end
 
-  @spec get(%Client{},non_neg_integer())::{:ok,{non_neg_integer(), %Client{}}}
+  @spec get(%Client{},non_neg_integer())::{{:value, non_neg_integer()}, %Client{}}
   def get(client, key) do
     #send get request to physical node
+    coordinate = hd(client.node_list)
+    send(coordinate, {:get, key})
     receive do
       {_, value} ->
-        {value,client}
+        IO.puts("values got: #{inspect(value)}")
+        {{:value, value},client}
       end
   end
 end
