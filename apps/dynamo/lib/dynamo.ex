@@ -377,6 +377,9 @@ defmodule Dynamo do
         #else transfer this message to the next node in prefer list
         #save first kind of value of key
         IO.puts("<<Dynamo>> #{inspect(whoami())} received get from client #{inspect(sender)} for key #{key}")
+        #if coordinate node not save this key return nil
+        current_process = whoami()
+
         if Map.has_key?(state.hash_table, key) do
           is_replica = state.hash_table[key].is_replica
           if is_replica == 0 do
@@ -406,6 +409,11 @@ defmodule Dynamo do
             virtual_node(state, extra_state)
           end
         else
+          if hd(state.key_range_map[current_process])<= key and key < List.last(state.key_range_map[current_process]) do
+            IO.puts("<<Dynamo>> #{inspect(whoami())} fail to get #{key} with coordinate node")
+            send(state.client, :nil)
+            virtual_node(state, extra_state)
+          end
           transfer_to = hd(state.prefer_list)
           IO.puts("<<Dynamo>> #{inspect(whoami())} transfer get key #{key} to #{transfer_to}")
           send(transfer_to, {:get, key})
@@ -621,6 +629,26 @@ defmodule Dynamo.Client do
       {_, value} ->
         IO.puts("values got: #{inspect(value)}")
         {{:value, value},client}
+      end
+  end
+  @spec put_and_get(%Client{}, non_neg_integer(), non_neg_integer())::{{:value, non_neg_integer()}, %Client{}}
+  def put_and_get(client, key, value) do
+    hash_code = key
+    coordinate = hd(client.node_list)
+    send(coordinate, {:put, key, value, hash_code})
+    start_time = System.monotonic_time()
+    IO.puts("System time is #{inspect(start_time)}")
+    send(coordinate, {:get, key})
+    receive do
+      {_, :nil} ->
+        IO.puts("read nothing")
+        current_time = System.monotonic_time()
+        IO.puts("System time is #{inspect(current_time)}")
+        send(coordinate, {:get, key})
+      {_, {value, vector_clock}} ->
+        IO.puts("values got: #{inspect(value)}")
+        IO.puts("values got: #{inspect(vector_clock)}")
+        {{:value, {value, vector_clock}},client}
       end
   end
 end
