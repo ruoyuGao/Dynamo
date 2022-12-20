@@ -10,10 +10,10 @@ defmodule DataversionTest do
     #Emulation.append_fuzzers([Fuzzers.delay(2),Fuzzers.drop(0.5)])
     Emulation.append_fuzzers([Fuzzers.delay(2)])
     w = r = n = 1
-    # base_config_a = Dynamo.new_configuration([:b, :c], %{a: [240,360], b: [0,120], c: [120, 240]}, 10, :client, w, r, n)
-    base_config_a = Dynamo.new_configuration([:b, :c], %{a: [0,120], b: [120,240], c: [240, 360]}, 10, :client, w, r, n)
-    base_config_b = Dynamo.new_configuration([:c, :a], %{a: [0,120], b: [120,240], c: [240, 360]}, 10, :client, w, r, n)
-    base_config_c = Dynamo.new_configuration([:a, :b], %{a: [0,120], b: [120,240], c: [240, 360]}, 10, :client, w, r, n)
+    # base_config_a = Dynamo.new_configuration([:b, :c], %{a: [240,360], b: [0,120], c: [120, 240]}, 1000, :client, w, r, n)
+    base_config_a = Dynamo.new_configuration([:b, :c], %{a: [0,120], b: [120,240], c: [240, 360]}, 1000, :client, w, r, n)
+    base_config_b = Dynamo.new_configuration([:c, :a], %{a: [0,120], b: [120,240], c: [240, 360]}, 1000, :client, w, r, n)
+    base_config_c = Dynamo.new_configuration([:a, :b], %{a: [0,120], b: [120,240], c: [240, 360]}, 1000, :client, w, r, n)
 
     # base_config_a = Dynamo.new_configuration([:b, :c], %{a: [0,120], b: [120,240], c: [240, 360]}, 10, :client, w, r, n)
 
@@ -25,8 +25,9 @@ defmodule DataversionTest do
     client =
       spawn(:client, fn ->
         client = Dynamo.Client.new_client([:a, :b, :c])
-        {{:value, v}, client} = Dynamo.Client.put_and_get(client, 5, "a")
-        assert v == ["a", %{a: 1}]
+        {{:value, v}, client} = Dynamo.Client.put_and_get(client, 5, "x")
+        assert v == [{"x", %{a: 1}}]
+        # assert length(v) > 1
       end)
 
     handle = Process.monitor(client)

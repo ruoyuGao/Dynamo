@@ -25,10 +25,10 @@ defmodule HashTest do
     client =
       spawn(:client, fn ->
         client = Dynamo.Client.new_client([:a, :b, :c])
-        {:ok, client} = Dynamo.Client.put(client, 5, "a")
+        {:ok, client} = Dynamo.Client.put(client, 5, "x")
         IO.puts("successfully put.")
         {{:value, v}, client} = Dynamo.Client.get(client, 5)
-        assert v == ["a", %{a: 1}]
+        assert v == [{"x", %{a: 1}}]
       end)
 
     handle = Process.monitor(client)
