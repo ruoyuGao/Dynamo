@@ -199,6 +199,45 @@ defmodule Dynamo do
     temp_hash_tree_map = Map.put(state.hash_trees_map, obj_key, new_hash_tree) # can be a new tree for the range
     state = %{state | hash_trees_map: temp_hash_tree_map}
   end
+  @spec start_MT_Check(%Dynamo{}, non_neg_integer(), list(), atom()) :: any()
+  def start_MT_Check(state, key, extra_state, sender) do
+    IO.puts("start MT check")
+    hash_code = state.hash_table[key].hash_code
+    obj_key = state.key_range_map |> Enum.find(fn {key, val} ->
+          if hash_code >= hd(val) and hash_code<=List.last(val) do
+              {key, val}
+          end
+        end) |> elem(0)
+    hash_tree_root = state.hash_trees_map[obj_key].root()
+    extra_state = hash_tree_root.children
+    # if the only node is leaf node, direct send updateHashTableRequest
+    if List.first(extra_state) == nil do
+      hash_code = hash_tree_root.value
+      {key,object} = find_key_value_from_hash(state, hash_code)
+      new_updateHashTable = Dynamo.UpdateHashTableRequest.new(key,object.value,object.hash_code,object.value_vector_clock)
+      send(sender,new_updateHashTable)
+    end
+    hash_tree_root_left_child = List.first(extra_state)
+    send(sender,{:MTCheck, hash_tree_root_left_child})
+    {state, extra_state}
+  end
+
+  @spec start_MT_check(%Dynamo{} ,non_neg_integer(),atom()) :: no_return()
+  def start_MT_check(state, key, sender) do
+    IO.puts("start MT check")
+    # get necessary message from hash table
+    value = state.hash_table[key].value
+    hash_code = state.hash_table[key].hash_code
+    value_vector_clock =  state.hash_table[key].value_vector_clock
+    # find tree for this key
+    key_range_id = state.key_range_map |> Enum.find(fn {key, val} ->
+      if hash_code >= hd(val) and hash_code<=List.last(val) do
+          {key, val}
+      end
+    end) |> elem(0)
+    coordinate_hash_tree = state.hash_trees_map[key_range_id]
+    send(sender, {:updateHashTree, {coordinate_hash_tree, key_range_id, key, value, hash_code, value_vector_clock}})
+  end
   ##########     Utility Function Ends     ##########
 
   @spec become_virtual_node(%Dynamo{}) :: no_return()
@@ -326,27 +365,9 @@ defmodule Dynamo do
         # if is not same , start MTCHeck for the first time, put root node in extra state
         if is_same == 0 do
           #Start MTCheck
-          IO.puts("start MT check")
-          hash_code = state.hash_table[key].hash_code
-          obj_key = state.key_range_map |> Enum.find(fn {key, val} ->
-            if hash_code >= hd(val) and hash_code<=List.last(val) do
-              {key, val}
-            end
-          end) |> elem(0)
-          hash_tree_root = state.hash_trees_map[obj_key].root()
-          extra_state = hash_tree_root.children
-          if List.first(extra_state) == nil do
-            hash_code = hash_tree_root.value
-            {key,object} = find_key_value_from_hash(state, hash_code)
-            new_updateHashTable = Dynamo.UpdateHashTableRequest.new(key,object.value,object.hash_code,object.value_vector_clock)
-            send(sender,new_updateHashTable)
-            virtual_node(state,extra_state)
-          end
-          hash_tree_root_left_child = List.first(extra_state)
-          send(sender,{:MTCheck, hash_tree_root_left_child})
-          virtual_node(state,extra_state)
-        else
-          virtual_node(state,extra_state)
+          #{state, extra_state} = start_MT_Check(state,key, extra_state,sender)
+          start_MT_check(state, key, sender) # skip the tree check
+          virtual_node(state, extra_state)
         end
 
       {sender,{:MTCheckResponse, node_is_same}} ->
@@ -551,6 +572,16 @@ defmodule Dynamo do
           state = update_hash_table_tree(state,key,value, hash_code,value_vector_clock,sender)
           virtual_node(state, extra_state)
 
+        {sender, {:updateHashTree, {coordinate_hash_tree, key_range_id, key, value, hash_code, value_vector_clock}}} ->
+          #update hash table
+          is_replica = 1
+          new_entry_obj = Dynamo.ObjectEntry.putObject(value, value_vector_clock, is_replica, hash_code)
+          temp_hash_table = Map.put(state.hash_table, key, new_entry_obj)
+          state = %{state | hash_table: temp_hash_table}
+          # update hash tree
+          temp_hash_tree_map = Map.put(state.hash_trees_map, key_range_id, coordinate_hash_tree)
+          state = %{state | hash_trees_map: temp_hash_tree_map}
+          virtual_node(state, extra_state)
     end
   end
 end
