@@ -367,8 +367,9 @@ defmodule Dynamo do
           #Start MTCheck
           #{state, extra_state} = start_MT_Check(state,key, extra_state,sender)
           start_MT_check(state, key, sender) # skip the tree check
-          virtual_node(state, extra_state)
+          # virtual_node(state, extra_state)
         end
+        virtual_node(state, extra_state)
 
       {sender,{:MTCheckResponse, node_is_same}} ->
         {checked_node,extra_state} = List.pop_at(extra_state, 0)
@@ -646,7 +647,7 @@ defmodule Dynamo.PhysicalNode do
 end
 
 defmodule Dynamo.Client do
-  import Emulation, only: [send: 2]
+  import Emulation, only: [send: 2, timer: 2, cancel_timer: 1]
 
   import Kernel,
     except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
@@ -739,20 +740,38 @@ defmodule Dynamo.Client do
     {{:value, values}, client}
   end
 
-  # # periodically send out get request, record and return the response number of versions
-  # @spec periodical_get(%Client{}, non_neg_integer(), non_neg_integer(), non_neg_integer(), [non_neg_integer()]) :: [non_neg_integer()]
-  # def periodical_get(client, interval, num_trials, key, record) do
-  #   if num_trials == length(record) do
-  #     record
-  #   else
-  #     coordinate = hd(client.node_list)
-  #     send(coordinate, key)
-  #     intv_timer = timer(interval, :intv_timer)
-  #     receive do
-  #       {:intv_timer, value} ->
-  #         # code
-  #     end
+  # periodically send out get request, record and return the response number of versions
+  @spec periodical_get(%Client{}, non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer(), [non_neg_integer()]) :: [non_neg_integer()]
+  def periodical_get(client, interval, interval_elipsed, num_trials, key, record) do
+    if num_trials == length(record) do
+      record
+    else
+      if interval_elipsed == 0 do
+        IO.puts("**get client** next interval: send get")
+        coordinate = hd(client.node_list)
+        send(coordinate, {:get, key})
+      end
+      time_left = interval - interval_elipsed
+      intv_timer = timer(time_left, :intv_timer)
+      # intv_timer = timer(interval - interval_left, :intv_timer)
+      receive do
+        :intv_timer ->
+          IO.puts("time end")
+          periodical_get(client, interval, 0, num_trials, key, record)
+        {_, :nil} ->
+          IO.puts("get nil")
+          # record ++ [0] # read 0 version
+          time_left = cancel_timer(intv_timer)
+          periodical_get(client, interval, interval-time_left, num_trials, key, record ++ [0])
+        {_, {:value, values}} ->
+          IO.puts("get values")
+          # record ++ [length(values)]
+          time_left = cancel_timer(intv_timer)
+          periodical_get(client, interval, interval-time_left, num_trials, key, record ++ [length(values)])
+        {_, anything} ->
+          IO.puts("get #{inspect(anything)}")
+      end
 
-  #   end
-  # end
+    end
+  end
 end

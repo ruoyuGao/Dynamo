@@ -8,8 +8,12 @@ defmodule DataversionTest do
 
   test "can return different version of data, k test" do
     Emulation.init()
+    # test config
     # Emulation.append_fuzzers([Fuzzers.delay(5.0),Fuzzers.drop(0.1)])
-    # Emulation.append_fuzzers([Fuzzers.delay(10.0)])
+    Emulation.append_fuzzers([Fuzzers.delay(10.0)])
+    num_trials = 100
+    get_interval = 10
+    # system config
     w = r = n = 1
     # base_config_a = Dynamo.new_configuration([:b, :c], %{a: [240,360], b: [0,120], c: [120, 240]}, 1000, :client, w, r, n)
     base_config_a = Dynamo.new_configuration([:b, :c], %{a: [0,120], b: [120,240], c: [240, 360]}, 1000, w, r, n)
@@ -29,19 +33,16 @@ defmodule DataversionTest do
         # first put an old version data
         {:ok , put_client} = Dynamo.Client.put(put_client, 5, "x")
         {:ok , put_client} = Dynamo.Client.put(put_client, 5, "y")
-        # {{:value, v}, put_client} = Dynamo.Client.put_and_get(put_client, 5, "y")
-        # assert v == [{"x", %{a: 1}}]
-        # IO.puts("got v: #{inspect(v)}")
-        # assert length(v) > 1
       end)
 
     get_client =
       spawn(:get_client, fn ->
         mark_unfuzzable()
         get_client = Dynamo.Client.new_client([:a, :b, :c])
-        {{:value, v}, get_client} = Dynamo.Client.get_and_listen(get_client, 5)
-        IO.puts("got v: #{inspect(v)}")
-        assert length(v) > 1
+        # {{:value, v}, get_client} = Dynamo.Client.get_and_listen(get_client, 5)
+        results = Dynamo.Client.periodical_get(get_client, get_interval, 0, num_trials, 5, [])
+        IO.puts("got results: #{inspect(results)}")
+        assert length(results) == num_trials
       end)
 
     handle = Process.monitor(get_client)
