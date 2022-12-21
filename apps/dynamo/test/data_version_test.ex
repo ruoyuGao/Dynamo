@@ -11,7 +11,10 @@ defmodule DataversionTest do
     # test config
     # Emulation.append_fuzzers([Fuzzers.delay(5.0),Fuzzers.drop(0.1)])
     # Emulation.append_fuzzers([Fuzzers.delay(10.0)])
-    num_trials = 10
+    delay_time = 40
+    Emulation.append_fuzzers([Fuzzers.delay(delay_time)])
+    start_time = delay_time/2
+    num_trials = 20
     get_interval = 10
     # system config
     w = r = n = 1
@@ -39,7 +42,7 @@ defmodule DataversionTest do
       spawn(:get_client, fn ->
         mark_unfuzzable()
         get_client = Dynamo.Client.new_client([:a, :b, :c])
-        # Process.sleep(10)
+        Process.sleep(20)
         # {{:value, v}, get_client} = Dynamo.Client.get_and_listen(get_client, 5)
         results = Dynamo.Client.periodical_get(get_client, get_interval, 0, num_trials, 5, [])
         IO.puts("got results: #{inspect(results)}")
