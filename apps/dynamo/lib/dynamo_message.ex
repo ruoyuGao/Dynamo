@@ -141,7 +141,7 @@ defmodule Dynamo.GetEntryResponse do
   @doc """
   Create a new GetEntryResponse
   """
-  @spec new(non_neg_integer(), non_neg_integer(), boolean(), map())::
+  @spec new(non_neg_integer(), any(), boolean(), map())::
   %GetEntryResponse{
     key: non_neg_integer(),
     value: non_neg_integer(),
